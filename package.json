@@ -1,0 +1,14 @@
+{
+  "name": "auto-campnet-gui",
+  "scripts": {
+    "tauri": "tauri",
+    "dev": "tauri dev",
+    "build": "tauri build"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^1.0.0-rc.2"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^1.0.0-rc.7"
+  }
+}
