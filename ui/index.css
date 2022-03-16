@@ -44,10 +44,10 @@ body {
 .textbox-label {
     margin: 0.25rem 0.5rem;
     font-size: 0.95rem;
-
 }
 
 .textbox-input {
+    color: #E2E8F0;
     margin: 0.25rem 1rem;
     /* background-color: #A0AEC0; */
     background-color: transparent;

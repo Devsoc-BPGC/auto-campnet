@@ -7,7 +7,8 @@
     "distDir": "../ui",
     "devPath": "../ui",
     "beforeDevCommand": "",
-    "beforeBuildCommand": ""
+    "beforeBuildCommand": "",
+    "withGlobalTauri": true
   },
   "tauri": {
     "bundle": {
