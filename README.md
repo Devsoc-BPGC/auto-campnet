@@ -12,7 +12,7 @@ Download the latest build from [releases page](https://github.com/riskycase/auto
 
 - [x] Build app UI
 - [ ] Set up login backend
-- [ ] Save user credentials
+- [x] Save user credentials
 - [ ] Allow user to add app to startup from within the app
 - [ ] Tray icon and actions
 - [ ] Query Sophos user dashboard to show remaining data for the day
