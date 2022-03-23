@@ -11,7 +11,7 @@ Download the latest build from [releases page](https://github.com/riskycase/auto
 ## Roadmap
 
 - [x] Build app UI
-- [ ] Set up login backend
+- [x] Set up login backend
 - [x] Save user credentials
 - [ ] Allow user to add app to startup from within the app
 - [ ] Tray icon and actions

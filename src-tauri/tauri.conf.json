@@ -59,7 +59,9 @@
         "width": 300,
         "height": 500,
         "resizable": false,
-        "fullscreen": false
+        "fullscreen": false,
+        "decorations": true,
+        "center": true
       }
     ],
     "security": {
