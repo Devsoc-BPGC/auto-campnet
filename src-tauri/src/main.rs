@@ -26,11 +26,11 @@ fn load_creds(save_file: &std::path::Path) -> Result<Credentials, String> {
   }
 }
 
-static mut proceed_campnet_attempt: bool = false;
+static mut PROCEED_CAMPNET_ATTEMPT: bool = false;
 
 unsafe fn connect_campnet(file_path: &std::path::PathBuf) {
-  
-  if proceed_campnet_attempt {
+
+  if PROCEED_CAMPNET_ATTEMPT {
     let campnet_status = reqwest::blocking::get("https://campnet.bits-goa.ac.in:8090/");
     if campnet_status.is_ok() {
       let login_status = reqwest::blocking::get("https://www.google.com");
@@ -53,24 +53,16 @@ unsafe fn connect_campnet(file_path: &std::path::PathBuf) {
                 .title("Connected to Campnet!")
                 .body("Logged in successfully to BPGC network")
                 .show();
-              println!("Conn succ");
             }
             else {
               tauri::api::notification::Notification::new("com.riskycase.autocampnet")
                 .title("Could not to Campnet!")
                 .body("There was an issue with the login attempt")
                 .show();
-              println!("Conn issue");
             }
           }
         }
       }
-      else {
-        println!("loggeed in already");
-      }
-    }
-    else {
-      println!("Not campnet");
     }
   }
 
@@ -89,16 +81,13 @@ fn main() {
     let file_creds = load_creds(&(save_dir.join("credentials.json")));
     if file_creds.is_ok() {
       let _creds = file_creds.unwrap();
-      proceed_campnet_attempt = true;
-    }
-    else {
-      println!("Credentials absent");
+      PROCEED_CAMPNET_ATTEMPT = true;
     }
     let write_save_file = save_dir.join("credentials.json");
     app.listen_global("save", move |event: tauri::Event| {
       let creds: Credentials = serde_json::from_str(event.payload().unwrap()).unwrap();
       save_creds(creds, &write_save_file);
-      proceed_campnet_attempt = true;
+      PROCEED_CAMPNET_ATTEMPT = true;
     });
     let read_save_file = save_dir.join("credentials.json");
     connect_campnet(&read_save_file);
