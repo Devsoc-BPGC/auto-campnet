@@ -71,7 +71,7 @@ body {
 }
 
 .checkbox-container {
-    display: flex;
+    display: none;
     align-items: center;
     justify-content: flex-start;
     margin: 0.25rem 1rem;
