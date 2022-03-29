@@ -11,6 +11,10 @@
     "withGlobalTauri": true
   },
   "tauri": {
+    "systemTray": {
+      "iconPath": "icons/icon.png",
+      "iconAsTemplate": true
+    },
     "bundle": {
       "active": true,
       "targets": "all",
@@ -61,7 +65,8 @@
         "resizable": false,
         "fullscreen": false,
         "decorations": true,
-        "center": true
+        "center": true,
+        "visible": false
       }
     ],
     "security": {

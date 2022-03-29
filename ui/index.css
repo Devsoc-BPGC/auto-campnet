@@ -70,6 +70,22 @@ body {
     border-radius: 0.25rem;
 }
 
+.creds-saved {
+    color: #CBD5E0;
+    background-color: #2F855A;
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+    overflow: hidden;
+    max-height: auto;
+    transition: all linear 0.5s;
+}
+
+.hide {
+    max-height: 0;
+    padding: 0 0.5rem;
+    transition: all linear 0.5s;
+}
+
 .checkbox-container {
     display: none;
     align-items: center;
