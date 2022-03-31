@@ -110,6 +110,7 @@ fn main() {
     .add_native_item(tauri::SystemTrayMenuItem::Separator)
     .add_item(tauri::CustomMenuItem::new("reconnect", "Force reconnect"))
     .add_item(tauri::CustomMenuItem::new("logout", "Logout"))
+    .add_item(tauri::CustomMenuItem::new("delete", "Delete credentials"))
     .add_native_item(tauri::SystemTrayMenuItem::Separator)
     .add_item(tauri::CustomMenuItem::new("quit", "Quit"));
     let system_tray = tauri::SystemTray::new()
@@ -155,11 +156,26 @@ fn main() {
               PROCEED_CAMPNET_ATTEMPT = false;
             }
             "reconnect" => {
-              if PROCEED_CAMPNET_ATTEMPT {
-                let save_file = path::app_dir(&app.config()).unwrap().join("credentials.json");
-                connect_campnet(&save_file);
+              let save_file = path::app_dir(&app.config()).unwrap().join("credentials.json");
+              let creds = load_creds(&save_file);
+              if creds.is_ok() {
+                if PROCEED_CAMPNET_ATTEMPT {
+                  connect_campnet(&save_file);
+                }
+                PROCEED_CAMPNET_ATTEMPT = true;
               }
-              PROCEED_CAMPNET_ATTEMPT = true;
+              else {
+                let window: tauri::Window = app.get_window("main").unwrap();
+                window.show().unwrap();
+              }
+            }
+            "delete" => {
+              let save_file = path::app_dir(&app.config()).unwrap().join("credentials.json");
+              let creds = load_creds(&save_file);
+              if creds.is_ok() {
+                std::fs::remove_file(&save_file).unwrap();
+              }
+              PROCEED_CAMPNET_ATTEMPT = false;
             }
             _ => {}
           }
