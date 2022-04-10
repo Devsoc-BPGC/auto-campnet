@@ -1,6 +1,6 @@
 {
   "package": {
-    "productName": "auto-campnet-gui",
+    "productName": "Auto Campnet GUI",
     "version": "0.1.0"
   },
   "build": {
@@ -16,7 +16,7 @@
       "iconAsTemplate": true
     },
     "bundle": {
-      "active": true,
+      "active": false,
       "targets": "all",
       "identifier": "com.riskycase.autocampnet",
       "icon": [
