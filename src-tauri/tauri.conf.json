@@ -1,6 +1,6 @@
 {
   "package": {
-    "productName": "auto-campnet-gui",
+    "productName": "Auto Campnet GUI",
     "version": "0.1.0"
   },
   "build": {
@@ -11,8 +11,12 @@
     "withGlobalTauri": true
   },
   "tauri": {
+    "systemTray": {
+      "iconPath": "icons/icon.png",
+      "iconAsTemplate": true
+    },
     "bundle": {
-      "active": true,
+      "active": false,
       "targets": "all",
       "identifier": "com.riskycase.autocampnet",
       "icon": [
@@ -25,7 +29,7 @@
       "resources": [],
       "externalBin": [],
       "copyright": "",
-      "category": "DeveloperTool",
+      "category": "Utility",
       "shortDescription": "",
       "longDescription": "",
       "deb": {
@@ -51,7 +55,25 @@
       "active": false
     },
     "allowlist": {
-      "all": true
+      "all": false,
+      "path": {
+        "all": true
+      },
+      "notification": {
+        "all": true
+      },
+      "fs": {
+        "all": false,
+        "copyFile": false,
+        "createDir": true,
+        "readDir": true,
+        "readFile": true,
+        "removeDir": false,
+        "removeFile": true,
+        "renameFile": false,
+        "scope": [],
+        "writeFile": true
+      }
     },
     "windows": [
       {
@@ -60,8 +82,9 @@
         "height": 500,
         "resizable": false,
         "fullscreen": false,
-        "decorations": true,
-        "center": true
+        "decorations": false,
+        "center": true,
+        "visible": false
       }
     ],
     "security": {
