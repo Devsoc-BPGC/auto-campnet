@@ -127,18 +127,22 @@ fn main() {
           app.get_window("main").unwrap().show().unwrap();
         }
         let write_save_file = save_dir.join("credentials.json");
-        let app_handle = app.app_handle();
+        let app_handle_save = app.app_handle();
         app.listen_global("save", move |event: tauri::Event| {
-          let creds_save: Credentials = serde_json::from_str(event.payload().unwrap()).unwrap();
+        let creds_save: Credentials = serde_json::from_str(event.payload().unwrap()).unwrap();
           save_creds(creds_save, &write_save_file);
           PROCEED_CAMPNET_ATTEMPT = true;
           std::thread::sleep(std::time::Duration::from_millis(3000));
-          app_handle.get_window("main").unwrap().hide().unwrap();
+          app_handle_save.get_window("main").unwrap().hide().unwrap();
           Notification::new("com.riskycase.autocampnet")
             .title("Credentials saved to disk")
             .body("App will try to login to campnet whenever available")
             .show()
             .unwrap();
+        });
+        let app_handle_minimise = app.app_handle();
+        app.listen_global("minimise", move |_event: tauri::Event| {
+          app_handle_minimise.get_window("main").unwrap().hide().unwrap();
         });
         let read_save_file = save_dir.join("credentials.json");
         connect_campnet(&read_save_file);

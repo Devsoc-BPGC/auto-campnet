@@ -8,10 +8,48 @@ body {
 
 body {
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
 	background-image: url(https://180dc.org/wp-content/uploads/2016/04/bits-goa-campus.jpg);
     background-position: center;
+}
+
+.title-bar {
+    justify-self: flex-start;
+    padding: 0.5rem 1rem;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    box-sizing: border-box;
+    background-color: rgba(34,31,31,0.75);
+    backdrop-filter: blur(0.5rem);
+    color: #E2E8F0;
+    font-weight: 450;
+    user-select: none;
+}
+
+.title {
+    font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+}
+
+.panel-container {
+    flex-grow: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.button-group {
+    cursor: pointer;
+}
+
+.button-minimise {
+    padding: 0.25rem;
+}
+
+.button-minimise:hover {
+    background-color: rgba(34,31,31,0.95);
 }
 
 .panel {

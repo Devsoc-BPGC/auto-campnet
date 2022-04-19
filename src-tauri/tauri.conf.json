@@ -82,7 +82,7 @@
         "height": 500,
         "resizable": false,
         "fullscreen": false,
-        "decorations": true,
+        "decorations": false,
         "center": true,
         "visible": false
       }
