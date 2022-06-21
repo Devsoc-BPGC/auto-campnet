@@ -16,7 +16,7 @@
       "iconAsTemplate": true
     },
     "bundle": {
-      "active": false,
+      "active": true,
       "targets": "all",
       "identifier": "com.riskycase.autocampnet",
       "icon": [
