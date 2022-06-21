@@ -1,7 +1,7 @@
 {
   "package": {
     "productName": "Auto Campnet GUI",
-    "version": "0.1.0"
+    "version": "0.1.1"
   },
   "build": {
     "distDir": "../ui",
@@ -33,13 +33,11 @@
       "shortDescription": "",
       "longDescription": "",
       "deb": {
-        "depends": [],
-        "useBootstrapper": false
+        "depends": []
       },
       "macOS": {
         "frameworks": [],
         "minimumSystemVersion": "",
-        "useBootstrapper": false,
         "exceptionDomain": "",
         "signingIdentity": null,
         "providerShortName": null,
