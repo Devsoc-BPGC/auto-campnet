@@ -1,3 +1,9 @@
+// Do not show a console window on Windows
+#![cfg_attr(
+  all(not(debug_assertions), target_os = "windows"),
+  windows_subsystem = "windows"
+)]
+
 use tauri::{Manager, api::{path, file, notification::Notification}};
 use serde::{Deserialize, Serialize};
 use std::io::Write;
