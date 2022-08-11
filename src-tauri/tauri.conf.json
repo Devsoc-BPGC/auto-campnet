@@ -1,7 +1,7 @@
 {
   "package": {
     "productName": "Auto Campnet GUI",
-    "version": "0.1.1"
+    "version": "0.1.2"
   },
   "build": {
     "distDir": "../ui",
@@ -71,6 +71,33 @@
         "renameFile": false,
         "scope": [],
         "writeFile": true
+      },
+      "window": {
+        "all": false,
+        "center": false,
+        "close": false,
+        "create": false,
+        "hide": true,
+        "maximize": false,
+        "minimize": false,
+        "print": false,
+        "requestUserAttention": false,
+        "setAlwaysOnTop": false,
+        "setDecorations": false,
+        "setFocus": false,
+        "setFullscreen": false,
+        "setIcon": false,
+        "setMaxSize": false,
+        "setMinSize": false,
+        "setPosition": false,
+        "setResizable": false,
+        "setSize": false,
+        "setSkipTaskbar": false,
+        "setTitle": false,
+        "show": true,
+        "startDragging": true,
+        "unmaximize": false,
+        "unminimize": false
       }
     },
     "windows": [
