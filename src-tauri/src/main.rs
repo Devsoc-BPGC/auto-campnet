@@ -168,6 +168,7 @@ fn main() {
               let creds = load_creds(&save_file);
               window.emit("credentials", &creds).unwrap();
               window.show().unwrap();
+              window.unminimize().unwrap();
             }
             "logout" => {
               LOGOUT_CAMPNET = true;
