@@ -21,6 +21,7 @@ tauri = { version = "1.0.5", features = ["fs-create-dir", "fs-read-dir", "fs-rea
 timer = "0.2.0"
 chrono = "0.4.19"
 reqwest = { version = "0.11.10", features = ["blocking"] }
+network-interface="0.1.2"
 
 [features]
 # by default Tauri runs in production mode
