@@ -19,3 +19,8 @@ listen('credentials', creds => {
     document.getElementById('loginuserid').value = decodeURIComponent(creds.payload.Ok.username);
     document.getElementById('loginpassword').value = decodeURIComponent(creds.payload.Ok.password);
 });
+
+document.addEventListener("visibilitychange", () => {
+    if(document.visibilityState === 'hidden')
+        emit('minimise')
+});
