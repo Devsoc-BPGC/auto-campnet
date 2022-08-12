@@ -1,5 +1,9 @@
 # Auto-campnet GUI
 
+## Transfer notice
+
+This repo will now be a public archive, head to [DevSoc BPGC's](https://github.com/Devsoc-BPGC/auto-campnet-gui-rustlang) fork to get latest updates.
+
 ### What is it?
 
 A small cross platform application that manages logging in to BITS Goa campus network automatically
