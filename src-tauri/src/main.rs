@@ -79,9 +79,23 @@ unsafe fn connect_campnet(file_path: &std::path::PathBuf) {
                   .body("Logged in successfully to BPGC network")
                   .show()
                   .unwrap();
+              } else if res_body.contains("failed") {
+                Notification::new("com.riskycase.autocampnet")
+                  .title("Could not connect to Campnet!")
+                  .body("Incorrect credentials were provided")
+                  .show()
+                  .unwrap();
+                PROCEED_CAMPNET_ATTEMPT = false;
+              } else if res_body.contains("exceeded") {
+                Notification::new("com.riskycase.autocampnet")
+                  .title("Could not connect to Campnet!")
+                  .body("Daily data limit exceeded on credentials")
+                  .show()
+                  .unwrap();
+                PROCEED_CAMPNET_ATTEMPT = false;
               } else {
                 Notification::new("com.riskycase.autocampnet")
-                  .title("Could not to Campnet!")
+                  .title("Could not connect to Campnet!")
                   .body("There was an issue with the login attempt")
                   .show()
                   .unwrap();
