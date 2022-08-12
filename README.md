@@ -1,24 +1,12 @@
 # Auto-campnet GUI
 
-## Transfer notice
-
-This repo will now be a public archive, head to [DevSoc BPGC's](https://github.com/Devsoc-BPGC/auto-campnet-gui-rustlang) fork to get latest updates.
-
 ### What is it?
 
 A small cross platform application that manages logging in to BITS Goa campus network automatically
 
 ### How do I install it?
 
-Download the latest build from [releases page](https://github.com/riskycase/auto-campnet-gui/releases)
-
-## Roadmap
-
-- [x] Build app UI
-- [x] Set up login backend
-- [x] Save user credentials
-- [x] Tray icon and actions
-- [ ] Query Sophos user dashboard to show remaining data for the day
+Download the latest build from [releases page](https://github.com/DevSoc-BPGC/auto-campnet/releases)
 
 ## Contributing
 
