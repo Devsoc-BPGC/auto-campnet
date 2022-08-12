@@ -20,7 +20,7 @@ Download the latest build from [releases page](https://github.com/riskycase/auto
 
 ### Set up development environment
 
-Follow the instructions given in Tauri's [prerequisites](https://tauri.studio/docs/getting-started/prerequisites) page to set up your machine according to the OS.
+Follow the instructions given in Tauri's [prerequisites](https://tauri.app/v1/guides/getting-started/prerequisites) page to set up your machine according to the OS.
 
 After that, in cloned repository run
 ```sh
