@@ -8,10 +8,10 @@
     "tauricon": "tauricon"
   },
   "dependencies": {
-    "@tauri-apps/api": "^1.0.1"
+    "@tauri-apps/api": "^1.0.2"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^1.0.0",
-    "@tauri-apps/tauricon": "github:tauri-apps/tauricon"
+    "@tauri-apps/cli": "^1.0.5",
+    "@tauri-apps/tauricon": "^1.0.3"
   }
 }
