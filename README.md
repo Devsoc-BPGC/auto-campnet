@@ -1,5 +1,9 @@
 # Auto-campnet GUI
 
+## Transfer notice
+
+This repo will now be a public archive, head to [DevSoc BPGC's](https://github.com/Devsoc-BPGC/auto-campnet-gui-rustlang) fork to get latest updates.
+
 ### What is it?
 
 A small cross platform application that manages logging in to BITS Goa campus network automatically
@@ -20,7 +24,7 @@ Download the latest build from [releases page](https://github.com/riskycase/auto
 
 ### Set up development environment
 
-Follow the instructions given in Tauri's [prerequisites](https://tauri.studio/docs/getting-started/prerequisites) page to set up your machine according to the OS.
+Follow the instructions given in Tauri's [prerequisites](https://tauri.app/v1/guides/getting-started/prerequisites) page to set up your machine according to the OS.
 
 After that, in cloned repository run
 ```sh
