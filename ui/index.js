@@ -1,26 +1,32 @@
-const { emit,listen } = window.__TAURI__.event;
+const { emit, listen } = window.__TAURI__.event;
 
-document.getElementById('save').addEventListener('click',_ => {
+document.getElementById("save").addEventListener("click", (_) => {
     document.getElementById("saved_message").className = "creds-saved";
-    emit('save', {
-        username: encodeURIComponent(document.getElementById('loginuserid').value),
-        password: encodeURIComponent(document.getElementById('loginpassword').value)
+    emit("save", {
+        username: encodeURIComponent(
+            document.getElementById("loginuserid").value
+        ),
+        password: encodeURIComponent(
+            document.getElementById("loginpassword").value
+        ),
     });
-    setTimeout(() =>
-        document.getElementById("saved_message").className = "creds-saved hide",
-        3000);
+    setTimeout(
+        () =>
+            (document.getElementById("saved_message").className =
+                "creds-saved hide"),
+        3000
+    );
 });
 
-document.getElementById('minimise').addEventListener('click', _ => {
-    emit('minimise');
-})
-
-listen('credentials', creds => {
-    document.getElementById('loginuserid').value = decodeURIComponent(creds.payload.Ok.username);
-    document.getElementById('loginpassword').value = decodeURIComponent(creds.payload.Ok.password);
+listen("credentials", (creds) => {
+    document.getElementById("loginuserid").value = decodeURIComponent(
+        creds.payload.Ok.username
+    );
+    document.getElementById("loginpassword").value = decodeURIComponent(
+        creds.payload.Ok.password
+    );
 });
 
 document.addEventListener("visibilitychange", () => {
-    if(document.visibilityState === 'hidden')
-        emit('minimise')
+    if (document.visibilityState === "hidden") emit("minimise");
 });
