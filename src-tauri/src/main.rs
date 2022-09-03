@@ -4,7 +4,6 @@
   windows_subsystem = "windows"
 )]
 
-use network_interface::{NetworkInterface, NetworkInterfaceConfig};
 use serde::{Deserialize, Serialize};
 use std::io::Write;
 use tauri::{
@@ -37,78 +36,68 @@ fn load_creds(save_file: &std::path::Path) -> Result<Credentials, String> {
 
 static mut PROCEED_CAMPNET_ATTEMPT: bool = false;
 static mut LOGOUT_CAMPNET: bool = false;
-static mut NETWORKS_COUNT: usize = 0;
 
 unsafe fn connect_campnet(file_path: &std::path::PathBuf) {
-  let interfaces_count = NetworkInterface::show().unwrap().len();
-
-  if NETWORKS_COUNT != interfaces_count {
-
-    NETWORKS_COUNT = interfaces_count;
-
-    if PROCEED_CAMPNET_ATTEMPT {
-      let campnet_status = reqwest::blocking::get("https://campnet.bits-goa.ac.in:8090/");
-      if campnet_status.is_ok() {
-        let login_status = reqwest::blocking::get("https://www.google.com");
-        if login_status.is_err() {
-          let helper_file = file_path.parent().unwrap().join("credentials.json");
-          let creds = load_creds(&helper_file);
-          if creds.is_ok() {
-            let creds = creds.unwrap();
-            let body: String = format!(
-              "mode=191&username={}&password={}&a={}&producttype=1",
-              creds.username,
-              creds.password,
-              std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_millis()
-            );
-            let client = reqwest::blocking::Client::new();
-            let res = client
-              .post("https://campnet.bits-goa.ac.in:8090/login.xml")
-              .header("Content-Type", "application/x-www-form-urlencoded")
-              .header("Content-Length", body.chars().count())
-              .body(body)
-              .send();
-            if res.is_ok() {
-              let res_body: String = res.unwrap().text().unwrap();
-              if res_body.contains("LIVE") {
-                Notification::new("com.riskycase.autocampnet")
-                  .title("Connected to Campnet!")
-                  .body("Logged in successfully to BPGC network")
-                  .show()
-                  .unwrap();
-              } else if res_body.contains("failed") {
-                Notification::new("com.riskycase.autocampnet")
-                  .title("Could not connect to Campnet!")
-                  .body("Incorrect credentials were provided")
-                  .show()
-                  .unwrap();
-                PROCEED_CAMPNET_ATTEMPT = false;
-              } else if res_body.contains("exceeded") {
-                Notification::new("com.riskycase.autocampnet")
-                  .title("Could not connect to Campnet!")
-                  .body("Daily data limit exceeded on credentials")
-                  .show()
-                  .unwrap();
-                PROCEED_CAMPNET_ATTEMPT = false;
-              } else {
-                Notification::new("com.riskycase.autocampnet")
-                  .title("Could not to Campnet!")
-                  .title("Could not connect to Campnet!")
-                  .body("There was an issue with the login attempt")
-                  .show()
-                  .unwrap();
-                PROCEED_CAMPNET_ATTEMPT = false;
-              }
+  if PROCEED_CAMPNET_ATTEMPT {
+    let campnet_status = reqwest::blocking::get("https://campnet.bits-goa.ac.in:8090/");
+    if campnet_status.is_ok() {
+      let login_status = reqwest::blocking::get("https://www.google.com");
+      if login_status.is_err() {
+        let helper_file = file_path.parent().unwrap().join("credentials.json");
+        let creds = load_creds(&helper_file);
+        if creds.is_ok() {
+          let creds = creds.unwrap();
+          let body: String = format!(
+            "mode=191&username={}&password={}&a={}&producttype=1",
+            creds.username,
+            creds.password,
+            std::time::SystemTime::now()
+              .duration_since(std::time::UNIX_EPOCH)
+              .unwrap()
+              .as_millis()
+          );
+          let client = reqwest::blocking::Client::new();
+          let res = client
+            .post("https://campnet.bits-goa.ac.in:8090/login.xml")
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .header("Content-Length", body.chars().count())
+            .body(body)
+            .send();
+          if res.is_ok() {
+            let res_body: String = res.unwrap().text().unwrap();
+            if res_body.contains("LIVE") {
+              Notification::new("com.riskycase.autocampnet")
+                .title("Connected to Campnet!")
+                .body("Logged in successfully to BPGC network")
+                .show()
+                .unwrap();
+            } else if res_body.contains("failed") {
+              Notification::new("com.riskycase.autocampnet")
+                .title("Could not connect to Campnet!")
+                .body("Incorrect credentials were provided")
+                .show()
+                .unwrap();
+              PROCEED_CAMPNET_ATTEMPT = false;
+            } else if res_body.contains("exceeded") {
+              Notification::new("com.riskycase.autocampnet")
+                .title("Could not connect to Campnet!")
+                .body("Daily data limit exceeded on credentials")
+                .show()
+                .unwrap();
+              PROCEED_CAMPNET_ATTEMPT = false
+            } else {
+              Notification::new("com.riskycase.autocampnet")
+                .title("Could not to Campnet!")
+                .body("There was an issue with the login attempt")
+                .show()
+                .unwrap();
+              PROCEED_CAMPNET_ATTEMPT = false;
             }
           }
         }
       }
     }
   }
-
   if LOGOUT_CAMPNET {
     let helper_file = file_path.parent().unwrap().join("credentials.json");
     let creds = load_creds(&helper_file);
@@ -148,7 +137,7 @@ unsafe fn connect_campnet(file_path: &std::path::PathBuf) {
     callback_timer.schedule_with_delay(chrono::Duration::milliseconds(2500), move || {
       connect_campnet(&callback_path);
     });
-  std::thread::sleep(std::time::Duration::from_millis(500));
+  std::thread::sleep(std::time::Duration::from_millis(3000));
 }
 
 fn main() {
