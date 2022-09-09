@@ -32,7 +32,7 @@ document.addEventListener("visibilitychange", () => {
 });
 
 //set using backend
-const campus = "hyderabad";
+const campus = "goa";
 
 const campusImages = {
     goa:"https://180dc.org/wp-content/uploads/2016/04/bits-goa-campus.jpg",
