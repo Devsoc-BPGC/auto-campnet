@@ -13,7 +13,7 @@ use tauri::{
 extern crate chrono;
 extern crate timer;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 struct Credentials {
   username: String,
   password: String,
@@ -154,9 +154,8 @@ fn main() {
     tauri::Builder::default()
       .setup(|app: &mut tauri::App| {
         let save_dir = path::app_dir(&app.config()).unwrap();
-        let file_creds = load_creds(&(save_dir.join("credentials.json")));
-        if file_creds.is_ok() {
-          let _creds = file_creds.unwrap();
+        let creds = load_creds(&(save_dir.join("credentials.json")));
+        if creds.is_ok() {
           PROCEED_CAMPNET_ATTEMPT = true;
         } else {
           app.get_window("main").unwrap().show().unwrap();
@@ -164,8 +163,8 @@ fn main() {
         let write_save_file = save_dir.join("credentials.json");
         let app_handle_save = app.app_handle();
         app.listen_global("save", move |event: tauri::Event| {
-          let creds_save: Credentials = serde_json::from_str(event.payload().unwrap()).unwrap();
-          save_creds(creds_save, &write_save_file);
+          let creds: Credentials = serde_json::from_str(event.payload().unwrap()).unwrap();
+          save_creds(creds, &write_save_file);
           PROCEED_CAMPNET_ATTEMPT = true;
           std::thread::sleep(std::time::Duration::from_millis(3000));
           app_handle_save.get_window("main").unwrap().hide().unwrap();
@@ -200,7 +199,19 @@ fn main() {
               .unwrap()
               .join("credentials.json");
             let creds = load_creds(&save_file);
-            window.emit("credentials", &creds).unwrap();
+            if creds.is_ok() {
+              window.emit("credentials", creds.unwrap()).unwrap();
+            } else {
+              window
+                .emit(
+                  "credentials",
+                  Credentials {
+                    username: "".into(),
+                    password: "".into(),
+                  },
+                )
+                .unwrap();
+            }
             window.show().unwrap();
             window.unminimize().unwrap();
           }
@@ -224,6 +235,17 @@ fn main() {
             }
           }
           "delete" => {
+            let window: tauri::Window = app.get_window("main").unwrap();
+            window
+              .emit(
+                "credentials",
+                Credentials {
+                  username: "".into(),
+                  password: "".into(),
+                },
+              )
+              .unwrap();
+            window.show().unwrap();
             let save_file = path::app_dir(&app.config())
               .unwrap()
               .join("credentials.json");

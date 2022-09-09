@@ -20,10 +20,10 @@ document.getElementById("save").addEventListener("click", (_) => {
 
 listen("credentials", (creds) => {
     document.getElementById("loginuserid").value = decodeURIComponent(
-        creds.payload.Ok.username
+        creds.payload.username
     );
     document.getElementById("loginpassword").value = decodeURIComponent(
-        creds.payload.Ok.password
+        creds.payload.password
     );
 });
 
