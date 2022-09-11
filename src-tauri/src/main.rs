@@ -38,10 +38,11 @@ static mut PROCEED_CAMPNET_ATTEMPT: bool = false;
 static mut LOGOUT_CAMPNET: bool = false;
 
 unsafe fn connect_campnet(file_path: &std::path::PathBuf) {
+  let client = reqwest::blocking::Client::new();
   if PROCEED_CAMPNET_ATTEMPT {
-    let campnet_status = reqwest::blocking::get("https://campnet.bits-goa.ac.in:8090/");
+    let campnet_status = client.head("https://campnet.bits-goa.ac.in:8090/").send();
     if campnet_status.is_ok() {
-      let login_status = reqwest::blocking::get("https://www.google.com");
+      let login_status = client.head("https://www.google.com").send();
       if login_status.is_err() {
         let helper_file = file_path.parent().unwrap().join("credentials.json");
         let creds = load_creds(&helper_file);
@@ -56,7 +57,6 @@ unsafe fn connect_campnet(file_path: &std::path::PathBuf) {
               .unwrap()
               .as_millis()
           );
-          let client = reqwest::blocking::Client::new();
           let res = client
             .post("https://campnet.bits-goa.ac.in:8090/login.xml")
             .header("Content-Type", "application/x-www-form-urlencoded")
