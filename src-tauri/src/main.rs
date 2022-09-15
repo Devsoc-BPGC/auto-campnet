@@ -34,10 +34,54 @@ fn load_creds(save_file: &std::path::Path) -> Result<Credentials, String> {
   }
 }
 
+fn logout_campnet(
+  creds: Credentials,
+  client: reqwest::blocking::Client,
+) -> Result<reqwest::blocking::Response, reqwest::Error> {
+  let body: String = format!(
+    "mode=193&username={}&a={}&producttype=1",
+    creds.username,
+    std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_millis()
+  );
+  return client
+    .post("https://campnet.bits-goa.ac.in:8090/logout.xml")
+    .header("Content-Type", "application/x-www-form-urlencoded")
+    .header("Content-Length", body.chars().count())
+    .body(body)
+    .send();
+}
+
+fn login_campnet(
+  creds: Credentials,
+  client: reqwest::blocking::Client,
+) -> Result<reqwest::blocking::Response, reqwest::Error> {
+  let body: String = format!(
+    "mode=191&username={}&password={}&a={}&producttype=1",
+    creds.username,
+    creds.password,
+    std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_millis()
+  );
+  return client
+    .post("https://campnet.bits-goa.ac.in:8090/login.xml")
+    .header("Content-Type", "application/x-www-form-urlencoded")
+    .header("Content-Length", body.chars().count())
+    .body(body)
+    .send();
+}
+
 static mut PROCEED_CAMPNET_ATTEMPT: bool = false;
 static mut LOGOUT_CAMPNET: bool = false;
 
-unsafe fn connect_campnet(file_path: &std::path::PathBuf) {
+unsafe fn connect_campnet(app_handle: tauri::AppHandle) {
+  let file_path = path::app_dir(&app_handle.config())
+    .unwrap()
+    .join("credentials.json");
   let client = reqwest::blocking::Client::new();
   if PROCEED_CAMPNET_ATTEMPT {
     let campnet_status = client.head("https://campnet.bits-goa.ac.in:8090/").send();
@@ -47,22 +91,7 @@ unsafe fn connect_campnet(file_path: &std::path::PathBuf) {
         let helper_file = file_path.parent().unwrap().join("credentials.json");
         let creds = load_creds(&helper_file);
         if creds.is_ok() {
-          let creds = creds.unwrap();
-          let body: String = format!(
-            "mode=191&username={}&password={}&a={}&producttype=1",
-            creds.username,
-            creds.password,
-            std::time::SystemTime::now()
-              .duration_since(std::time::UNIX_EPOCH)
-              .unwrap()
-              .as_millis()
-          );
-          let res = client
-            .post("https://campnet.bits-goa.ac.in:8090/login.xml")
-            .header("Content-Type", "application/x-www-form-urlencoded")
-            .header("Content-Length", body.chars().count())
-            .body(body)
-            .send();
+          let res = login_campnet(creds.unwrap(), client);
           if res.is_ok() {
             let res_body: String = res.unwrap().text().unwrap();
             if res_body.contains("LIVE") {
@@ -97,27 +126,11 @@ unsafe fn connect_campnet(file_path: &std::path::PathBuf) {
         }
       }
     }
-  }
-  if LOGOUT_CAMPNET {
+  } else if LOGOUT_CAMPNET {
     let helper_file = file_path.parent().unwrap().join("credentials.json");
     let creds = load_creds(&helper_file);
     if creds.is_ok() {
-      let creds = creds.unwrap();
-      let body: String = format!(
-        "mode=193&username={}&a={}&producttype=1",
-        creds.username,
-        std::time::SystemTime::now()
-          .duration_since(std::time::UNIX_EPOCH)
-          .unwrap()
-          .as_millis()
-      );
-      let client = reqwest::blocking::Client::new();
-      let res = client
-        .post("https://campnet.bits-goa.ac.in:8090/logout.xml")
-        .header("Content-Type", "application/x-www-form-urlencoded")
-        .header("Content-Length", body.chars().count())
-        .body(body)
-        .send();
+      let res = logout_campnet(creds.unwrap(), client);
       if res.is_ok() {
         let res_body: String = res.unwrap().text().unwrap();
         if res_body.contains("LOGIN") {
@@ -132,10 +145,9 @@ unsafe fn connect_campnet(file_path: &std::path::PathBuf) {
   }
 
   let callback_timer = timer::Timer::new();
-  let callback_path = file_path.parent().unwrap().join("credentials.json");
   let _callback_gaurd =
     callback_timer.schedule_with_delay(chrono::Duration::milliseconds(2500), move || {
-      connect_campnet(&callback_path);
+      connect_campnet(app_handle.app_handle());
     });
   std::thread::sleep(std::time::Duration::from_millis(3000));
 }
@@ -182,8 +194,7 @@ fn main() {
             .hide()
             .unwrap();
         });
-        let read_save_file = save_dir.join("credentials.json");
-        connect_campnet(&read_save_file);
+        connect_campnet(app.handle());
         std::fs::create_dir_all(save_dir).unwrap();
         Ok(())
       })
@@ -226,7 +237,7 @@ fn main() {
             let creds = load_creds(&save_file);
             if creds.is_ok() {
               if PROCEED_CAMPNET_ATTEMPT {
-                connect_campnet(&save_file);
+                connect_campnet(app.app_handle());
               }
               PROCEED_CAMPNET_ATTEMPT = true;
             } else {
