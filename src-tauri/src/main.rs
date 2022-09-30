@@ -4,6 +4,8 @@
   windows_subsystem = "windows"
 )]
 
+static LOGIN_ENDPOINT: &str = "https://campnet.bits-goa.ac.in:8090";
+
 use serde::{Deserialize, Serialize};
 use std::io::Write;
 use tauri::{
@@ -47,7 +49,7 @@ fn logout_campnet(
       .as_millis()
   );
   return client
-    .post("https://campnet.bits-goa.ac.in:8090/logout.xml")
+    .post(LOGIN_ENDPOINT.to_owned() + "/logout.xml")
     .header("Content-Type", "application/x-www-form-urlencoded")
     .header("Content-Length", body.chars().count())
     .body(body)
@@ -68,7 +70,7 @@ fn login_campnet(
       .as_millis()
   );
   return client
-    .post("https://campnet.bits-goa.ac.in:8090/login.xml")
+    .post(LOGIN_ENDPOINT.to_owned() + "/login.xml")
     .header("Content-Type", "application/x-www-form-urlencoded")
     .header("Content-Length", body.chars().count())
     .body(body)
@@ -84,7 +86,7 @@ unsafe fn connect_campnet(app_handle: tauri::AppHandle) {
     .join("credentials.json");
   let client = reqwest::blocking::Client::new();
   if PROCEED_CAMPNET_ATTEMPT {
-    let campnet_status = client.head("https://campnet.bits-goa.ac.in:8090/").send();
+    let campnet_status = client.head(LOGIN_ENDPOINT.to_owned()).send();
     if campnet_status.is_ok() {
       let login_status = client.head("https://www.google.com").send();
       if login_status.is_err() {
