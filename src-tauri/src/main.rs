@@ -4,6 +4,8 @@
   windows_subsystem = "windows"
 )]
 
+static LOGIN_ENDPOINT: &str = "https://campnet.bits-goa.ac.in:8090";
+
 use serde::{Deserialize, Serialize};
 use std::io::Write;
 use tauri::{
@@ -13,7 +15,7 @@ use tauri::{
 extern crate chrono;
 extern crate timer;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 struct Credentials {
   username: String,
   password: String,
@@ -34,35 +36,64 @@ fn load_creds(save_file: &std::path::Path) -> Result<Credentials, String> {
   }
 }
 
+fn logout_campnet(
+  creds: Credentials,
+  client: reqwest::blocking::Client,
+) -> Result<reqwest::blocking::Response, reqwest::Error> {
+  let body: String = format!(
+    "mode=193&username={}&a={}&producttype=1",
+    creds.username,
+    std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_millis()
+  );
+  return client
+    .post(LOGIN_ENDPOINT.to_owned() + "/logout.xml")
+    .header("Content-Type", "application/x-www-form-urlencoded")
+    .header("Content-Length", body.chars().count())
+    .body(body)
+    .send();
+}
+
+fn login_campnet(
+  creds: Credentials,
+  client: reqwest::blocking::Client,
+) -> Result<reqwest::blocking::Response, reqwest::Error> {
+  let body: String = format!(
+    "mode=191&username={}&password={}&a={}&producttype=1",
+    creds.username,
+    creds.password,
+    std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_millis()
+  );
+  return client
+    .post(LOGIN_ENDPOINT.to_owned() + "/login.xml")
+    .header("Content-Type", "application/x-www-form-urlencoded")
+    .header("Content-Length", body.chars().count())
+    .body(body)
+    .send();
+}
+
 static mut PROCEED_CAMPNET_ATTEMPT: bool = false;
 static mut LOGOUT_CAMPNET: bool = false;
 
-unsafe fn connect_campnet(file_path: &std::path::PathBuf) {
+unsafe fn connect_campnet(app_handle: tauri::AppHandle) {
+  let file_path = path::app_dir(&app_handle.config())
+    .unwrap()
+    .join("credentials.json");
+  let client = reqwest::blocking::Client::new();
   if PROCEED_CAMPNET_ATTEMPT {
-    let campnet_status = reqwest::blocking::get("https://campnet.bits-goa.ac.in:8090/");
+    let campnet_status = client.head(LOGIN_ENDPOINT.to_owned()).send();
     if campnet_status.is_ok() {
-      let login_status = reqwest::blocking::get("https://www.google.com");
+      let login_status = client.head("https://www.google.com").send();
       if login_status.is_err() {
         let helper_file = file_path.parent().unwrap().join("credentials.json");
         let creds = load_creds(&helper_file);
         if creds.is_ok() {
-          let creds = creds.unwrap();
-          let body: String = format!(
-            "mode=191&username={}&password={}&a={}&producttype=1",
-            creds.username,
-            creds.password,
-            std::time::SystemTime::now()
-              .duration_since(std::time::UNIX_EPOCH)
-              .unwrap()
-              .as_millis()
-          );
-          let client = reqwest::blocking::Client::new();
-          let res = client
-            .post("https://campnet.bits-goa.ac.in:8090/login.xml")
-            .header("Content-Type", "application/x-www-form-urlencoded")
-            .header("Content-Length", body.chars().count())
-            .body(body)
-            .send();
+          let res = login_campnet(creds.unwrap(), client);
           if res.is_ok() {
             let res_body: String = res.unwrap().text().unwrap();
             if res_body.contains("LIVE") {
@@ -97,27 +128,11 @@ unsafe fn connect_campnet(file_path: &std::path::PathBuf) {
         }
       }
     }
-  }
-  if LOGOUT_CAMPNET {
+  } else if LOGOUT_CAMPNET {
     let helper_file = file_path.parent().unwrap().join("credentials.json");
     let creds = load_creds(&helper_file);
     if creds.is_ok() {
-      let creds = creds.unwrap();
-      let body: String = format!(
-        "mode=193&username={}&a={}&producttype=1",
-        creds.username,
-        std::time::SystemTime::now()
-          .duration_since(std::time::UNIX_EPOCH)
-          .unwrap()
-          .as_millis()
-      );
-      let client = reqwest::blocking::Client::new();
-      let res = client
-        .post("https://campnet.bits-goa.ac.in:8090/logout.xml")
-        .header("Content-Type", "application/x-www-form-urlencoded")
-        .header("Content-Length", body.chars().count())
-        .body(body)
-        .send();
+      let res = logout_campnet(creds.unwrap(), client);
       if res.is_ok() {
         let res_body: String = res.unwrap().text().unwrap();
         if res_body.contains("LOGIN") {
@@ -132,10 +147,9 @@ unsafe fn connect_campnet(file_path: &std::path::PathBuf) {
   }
 
   let callback_timer = timer::Timer::new();
-  let callback_path = file_path.parent().unwrap().join("credentials.json");
   let _callback_gaurd =
     callback_timer.schedule_with_delay(chrono::Duration::milliseconds(2500), move || {
-      connect_campnet(&callback_path);
+      connect_campnet(app_handle.app_handle());
     });
   std::thread::sleep(std::time::Duration::from_millis(3000));
 }
@@ -154,9 +168,8 @@ fn main() {
     tauri::Builder::default()
       .setup(|app: &mut tauri::App| {
         let save_dir = path::app_dir(&app.config()).unwrap();
-        let file_creds = load_creds(&(save_dir.join("credentials.json")));
-        if file_creds.is_ok() {
-          let _creds = file_creds.unwrap();
+        let creds = load_creds(&(save_dir.join("credentials.json")));
+        if creds.is_ok() {
           PROCEED_CAMPNET_ATTEMPT = true;
         } else {
           app.get_window("main").unwrap().show().unwrap();
@@ -164,8 +177,8 @@ fn main() {
         let write_save_file = save_dir.join("credentials.json");
         let app_handle_save = app.app_handle();
         app.listen_global("save", move |event: tauri::Event| {
-          let creds_save: Credentials = serde_json::from_str(event.payload().unwrap()).unwrap();
-          save_creds(creds_save, &write_save_file);
+          let creds: Credentials = serde_json::from_str(event.payload().unwrap()).unwrap();
+          save_creds(creds, &write_save_file);
           PROCEED_CAMPNET_ATTEMPT = true;
           std::thread::sleep(std::time::Duration::from_millis(3000));
           app_handle_save.get_window("main").unwrap().hide().unwrap();
@@ -183,8 +196,7 @@ fn main() {
             .hide()
             .unwrap();
         });
-        let read_save_file = save_dir.join("credentials.json");
-        connect_campnet(&read_save_file);
+        connect_campnet(app.handle());
         std::fs::create_dir_all(save_dir).unwrap();
         Ok(())
       })
@@ -200,7 +212,19 @@ fn main() {
               .unwrap()
               .join("credentials.json");
             let creds = load_creds(&save_file);
-            window.emit("credentials", &creds).unwrap();
+            if creds.is_ok() {
+              window.emit("credentials", creds.unwrap()).unwrap();
+            } else {
+              window
+                .emit(
+                  "credentials",
+                  Credentials {
+                    username: "".into(),
+                    password: "".into(),
+                  },
+                )
+                .unwrap();
+            }
             window.show().unwrap();
             window.unminimize().unwrap();
           }
@@ -215,7 +239,7 @@ fn main() {
             let creds = load_creds(&save_file);
             if creds.is_ok() {
               if PROCEED_CAMPNET_ATTEMPT {
-                connect_campnet(&save_file);
+                connect_campnet(app.app_handle());
               }
               PROCEED_CAMPNET_ATTEMPT = true;
             } else {
@@ -224,6 +248,17 @@ fn main() {
             }
           }
           "delete" => {
+            let window: tauri::Window = app.get_window("main").unwrap();
+            window
+              .emit(
+                "credentials",
+                Credentials {
+                  username: "".into(),
+                  password: "".into(),
+                },
+              )
+              .unwrap();
+            window.show().unwrap();
             let save_file = path::app_dir(&app.config())
               .unwrap()
               .join("credentials.json");
