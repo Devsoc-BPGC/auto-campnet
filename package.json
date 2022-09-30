@@ -1,6 +1,6 @@
 {
   "name": "auto-campnet-gui",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "scripts": {
     "tauri": "tauri",
     "dev": "tauri dev",
