@@ -4,10 +4,10 @@
     "version": "0.2.1"
   },
   "build": {
-    "distDir": "../ui",
-    "devPath": "../ui",
-    "beforeDevCommand": "",
-    "beforeBuildCommand": "",
+    "distDir": "../dist",
+    "devPath": "http://localhost:5173",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
     "withGlobalTauri": true
   },
   "tauri": {
@@ -103,12 +103,9 @@
     "windows": [
       {
         "title": "Auto Campnet",
-        "width": 300,
-        "height": 500,
-        "resizable": false,
-        "fullscreen": false,
         "decorations": true,
-        "center": true,
+        "minHeight": 640,
+        "minWidth": 360,
         "visible": false
       }
     ],

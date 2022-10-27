@@ -1,16 +1,21 @@
 {
-  "name": "auto-campnet-gui",
-  "version": "0.2.1",
-  "scripts": {
-    "tauri": "tauri",
-    "dev": "tauri dev",
-    "build": "tauri build",
-    "tauricon": "tauricon"
-  },
-  "dependencies": {
-    "@tauri-apps/api": "^1.1.0"
-  },
-  "devDependencies": {
-    "@tauri-apps/cli": "^1.1.1"
-  }
+    "name": "auto-campnet-gui",
+    "version": "0.2.1",
+    "scripts": {
+        "tauri": "tauri",
+        "dev": "vite",
+        "build": "tsc && vite build",
+        "tauricon": "tauricon"
+    },
+    "dependencies": {
+        "@tauri-apps/api": "^1.1.0",
+        "preact": "^10.11.2"
+    },
+    "devDependencies": {
+        "@preact/preset-vite": "^2.4.0",
+        "@tauri-apps/cli": "^1.1.1",
+        "@types/node": "^18.11.7",
+        "typescript": "^4.8.4",
+        "vite": "^3.2.0"
+    }
 }
