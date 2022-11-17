@@ -64,7 +64,7 @@ checksum = "508b352bb5c066aac251f6daf6b36eccd03e8a88e8081cd44959ea277a3af9a8"
 
 [[package]]
 name = "app"
-version = "0.2.1"
+version = "1.0.0"
 dependencies = [
  "chrono",
  "reqwest",
@@ -97,6 +97,22 @@ dependencies = [
  "gobject-sys",
  "libc",
  "system-deps 6.0.2",
+]
+
+[[package]]
+name = "attohttpc"
+version = "0.22.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1fcf00bc6d5abb29b5f97e3c61a90b6d3caa12f3faf897d4a3e3607c050a35a7"
+dependencies = [
+ "flate2",
+ "http",
+ "log",
+ "native-tls",
+ "serde",
+ "serde_json",
+ "serde_urlencoded",
+ "url",
 ]
 
 [[package]]
@@ -2825,6 +2841,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "efbf22abd61d95ca9b2becd77f9db4c093892f73e8a07d21d8b0b2bf71a7bcea"
 dependencies = [
  "anyhow",
+ "attohttpc",
  "cocoa",
  "dirs-next",
  "embed_plist",

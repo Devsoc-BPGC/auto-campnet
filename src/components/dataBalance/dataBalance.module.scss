@@ -1,0 +1,11 @@
+.dataContainer {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Times New Roman', Times, serif;
+    @media screen and (max-width: 640px) {
+        display: none;
+    }
+}
