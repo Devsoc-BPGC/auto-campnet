@@ -1,32 +1,46 @@
-import { useState } from 'preact/hooks'
-import preactLogo from './assets/preact.svg'
-import './app.css'
+import styles from "./app.module.scss";
+import { emit, listen, Event } from "@tauri-apps/api/event";
+import { Login } from "./components/login/login";
+import { ElevatedCard, ToastContainer } from "@cred/neopop-web/lib/components";
+import { useEffect, useState } from "preact/hooks";
+import { DataBalance } from "./components/dataBalance/dataBalance";
+import { Credentials } from "./types";
 
 export function App() {
-  const [count, setCount] = useState(0)
+    const [username, setUsername] = useState("");
+    const [password, setPassword] = useState("");
 
-  return (
-    <>
-      <div>
-        <a href="https://vitejs.dev" target="_blank">
-          <img src="/vite.svg" class="logo" alt="Vite logo" />
-        </a>
-        <a href="https://preactjs.com" target="_blank">
-          <img src={preactLogo} class="logo preact" alt="Preact logo" />
-        </a>
-      </div>
-      <h1>Vite + Preact</h1>
-      <div class="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/app.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p class="read-the-docs">
-        Click on the Vite and Preact logos to learn more
-      </p>
-    </>
-  )
+    useEffect(() => {
+        listen("credentials", (creds: Event<Credentials>) => {
+            setUsername(creds.payload.username);
+            setPassword(creds.payload.password);
+        });
+    }, []);
+
+    document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "hidden") emit("minimise");
+    });
+
+    return (
+        <div>
+            <ToastContainer />
+            <ElevatedCard
+                backgroundColor="#0D0D0D"
+                edgeColors={{
+                    bottom: "#161616",
+                    right: "#121212",
+                }}
+            >
+                <div class={styles.mainContainer}>
+                    <Login
+                        username={username}
+                        password={password}
+                        setUsername={setUsername}
+                        setPassword={setPassword}
+                    />
+                    <DataBalance username={username} password={password} />
+                </div>
+            </ElevatedCard>
+        </div>
+    );
 }

@@ -1,0 +1,17 @@
+.loginContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 20rem;
+  padding: 1rem;
+}
+
+.loginContainer > * {
+  margin: 0.5rem 0;
+}
+
+.bitsLogo {
+  margin: 1rem 0;
+  height: 6.5rem;
+  width: 100%;
+}

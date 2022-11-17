@@ -98,13 +98,18 @@
         "startDragging": true,
         "unmaximize": false,
         "unminimize": false
+      },
+      "http": {
+        "all": true,
+        "request": true,
+        "scope": ["https://campnet.bits-goa.ac.in:8093/*"]
       }
     },
     "windows": [
       {
         "title": "Auto Campnet",
         "decorations": true,
-        "minHeight": 640,
+        "minHeight": 400,
         "minWidth": 360,
         "visible": false
       }
