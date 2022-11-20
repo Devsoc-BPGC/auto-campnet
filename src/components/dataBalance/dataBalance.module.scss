@@ -9,3 +9,16 @@
         display: none;
     }
 }
+
+.infoContainer {
+    margin: 1rem 0;
+    width: 100%;
+    .dataInfo {
+        display: flex;
+        justify-content: space-between;
+        .dataUnit {
+            font-size: 0.7rem;
+            margin: 0rem 0.2rem;
+        }
+    }
+}
