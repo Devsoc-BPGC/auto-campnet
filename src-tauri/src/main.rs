@@ -81,6 +81,14 @@ static mut PROCEED_CAMPNET_ATTEMPT: bool = false;
 static mut LOGOUT_CAMPNET: bool = false;
 
 unsafe fn connect_campnet(app_handle: tauri::AppHandle) {
+    let tray_handle = app_handle.tray_handle();
+    let resources_resolver = app_handle.path_resolver();
+    let active_icon_path = resources_resolver
+        .resolve_resource("resources/icons/active.png")
+        .unwrap();
+    let passive_icon_path = resources_resolver
+        .resolve_resource("resources/icons/passive.png")
+        .unwrap();
     let file_path = path::app_dir(&app_handle.config())
         .unwrap()
         .join("credentials.json");
@@ -102,6 +110,9 @@ unsafe fn connect_campnet(app_handle: tauri::AppHandle) {
                                 .body("Logged in successfully to BPGC network")
                                 .show()
                                 .unwrap();
+                            tray_handle
+                                .set_icon(tauri::Icon::File(active_icon_path))
+                                .unwrap();
                         } else if res_body.contains("failed") {
                             Notification::new("com.riskycase.autocampnet")
                                 .title("Could not connect to Campnet!")
@@ -109,13 +120,19 @@ unsafe fn connect_campnet(app_handle: tauri::AppHandle) {
                                 .show()
                                 .unwrap();
                             PROCEED_CAMPNET_ATTEMPT = false;
+                            tray_handle
+                                .set_icon(tauri::Icon::File(passive_icon_path))
+                                .unwrap();
                         } else if res_body.contains("exceeded") {
                             Notification::new("com.riskycase.autocampnet")
                                 .title("Could not connect to Campnet!")
                                 .body("Daily data limit exceeded on credentials")
                                 .show()
                                 .unwrap();
-                            PROCEED_CAMPNET_ATTEMPT = false
+                            PROCEED_CAMPNET_ATTEMPT = false;
+                            tray_handle
+                                .set_icon(tauri::Icon::File(passive_icon_path))
+                                .unwrap();
                         } else {
                             Notification::new("com.riskycase.autocampnet")
                                 .title("Could not to Campnet!")
@@ -123,6 +140,9 @@ unsafe fn connect_campnet(app_handle: tauri::AppHandle) {
                                 .show()
                                 .unwrap();
                             PROCEED_CAMPNET_ATTEMPT = false;
+                            tray_handle
+                                .set_icon(tauri::Icon::File(passive_icon_path))
+                                .unwrap();
                         }
                     }
                 }
@@ -233,6 +253,13 @@ fn main() {
                     "logout" => {
                         LOGOUT_CAMPNET = true;
                         PROCEED_CAMPNET_ATTEMPT = false;
+                        app.tray_handle()
+                            .set_icon(tauri::Icon::File(
+                                app.path_resolver()
+                                    .resolve_resource("resources/icons/passive.png")
+                                    .unwrap(),
+                            ))
+                            .unwrap();
                     }
                     "reconnect" => {
                         let save_file = path::app_dir(&app.config())
