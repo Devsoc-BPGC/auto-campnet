@@ -7,6 +7,7 @@ import styles from "./dataBalance.module.scss";
 export function DataBalance(props: { username: string; password: string }) {
     const [datas, setDatas] = useState<Array<number>>([1, 0, 0, 1, 0]);
     const [units, setUnits] = useState<Array<string>>(["", "", "", "", ""]);
+    const [toShow, show] = useState<boolean>(false);
     const [balanceTimeout, setBalanceTimeOut] = useState<NodeJS.Timeout>();
 
     useEffect(() => {
@@ -93,13 +94,14 @@ export function DataBalance(props: { username: string; password: string }) {
                             iter.children[0].id.replace(/Language./, "")
                         )
                     );
+                    show(true);
                 })
                 .then(() => setBalanceTimeOut(setTimeout(getBalance, 15000)))
                 .catch((err) => console.error(err))
         );
     }
 
-    return (
+    return toShow ? (
         <div class={styles.dataContainer}>
             <ScoreMeter
                 key={datas[4]}
@@ -120,5 +122,7 @@ export function DataBalance(props: { username: string; password: string }) {
             <span>Data Used: {`${datas[3]} ${units[3]}`}</span>
             <span>Data Left: {`${datas[4]} ${units[4]}`}</span>
         </div>
+    ) : (
+        <></>
     );
 }
