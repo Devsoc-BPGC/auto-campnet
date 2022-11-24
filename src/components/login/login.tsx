@@ -99,8 +99,8 @@ export function Login(props: {
                                     props.setUsername(localUsername);
                                     props.setPassword(localPassword);
                                     emit("save", {
-                                        username: localUsername,
-                                        password: localPassword,
+                                        username: encodeURIComponent(localUsername),
+                                        password: encodeURIComponent(localPassword),
                                     });
                                 } else {
                                     showToast("Incorrect credentials!", {

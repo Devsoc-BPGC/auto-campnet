@@ -12,8 +12,8 @@ export function App() {
 
     useEffect(() => {
         listen("credentials", (creds: Event<Credentials>) => {
-            setUsername(creds.payload.username);
-            setPassword(creds.payload.password);
+            setUsername(decodeURIComponent(creds.payload.username));
+            setPassword(decodeURIComponent(creds.payload.password));
         });
     }, []);
 
