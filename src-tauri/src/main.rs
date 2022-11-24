@@ -9,7 +9,7 @@ static LOGIN_ENDPOINT: &str = "https://campnet.bits-goa.ac.in:8090";
 use serde::{Deserialize, Serialize};
 use std::io::Write;
 use tauri::{
-    api::{file, notification::Notification, path},
+    api::{file, notification::Notification},
     Manager,
 };
 extern crate chrono;
@@ -89,7 +89,9 @@ unsafe fn connect_campnet(app_handle: tauri::AppHandle) {
     let passive_icon_path = resources_resolver
         .resolve_resource("resources/icons/passive.png")
         .unwrap();
-    let file_path = path::app_dir(&app_handle.config())
+    let file_path = app_handle
+        .path_resolver()
+        .app_config_dir()
         .unwrap()
         .join("credentials.json");
     let client = reqwest::blocking::Client::new();
@@ -98,8 +100,7 @@ unsafe fn connect_campnet(app_handle: tauri::AppHandle) {
         if campnet_status.is_ok() {
             let login_status = client.head("https://www.google.com").send();
             if login_status.is_err() {
-                let helper_file = file_path.parent().unwrap().join("credentials.json");
-                let creds = load_creds(&helper_file);
+                let creds = load_creds(&file_path);
                 if creds.is_ok() {
                     let res = login_campnet(creds.unwrap(), client);
                     if res.is_ok() {
@@ -149,8 +150,7 @@ unsafe fn connect_campnet(app_handle: tauri::AppHandle) {
             }
         }
     } else if LOGOUT_CAMPNET {
-        let helper_file = file_path.parent().unwrap().join("credentials.json");
-        let creds = load_creds(&helper_file);
+        let creds = load_creds(&file_path);
         if creds.is_ok() {
             let res = logout_campnet(creds.unwrap(), client);
             if res.is_ok() {
@@ -187,19 +187,22 @@ fn main() {
         let system_tray = tauri::SystemTray::new().with_menu(tray_menu);
         tauri::Builder::default()
             .setup(|app: &mut tauri::App| {
-                let save_dir = path::app_dir(&app.config()).unwrap();
-                let creds = load_creds(&(save_dir.join("credentials.json")));
+                let file_path = app
+                    .path_resolver()
+                    .app_config_dir()
+                    .unwrap()
+                    .join("credentials.json");
+                let creds = load_creds(&file_path);
                 if creds.is_ok() {
                     PROCEED_CAMPNET_ATTEMPT = true;
                 } else {
                     app.get_window("main").unwrap().show().unwrap();
                 }
-                let write_save_file = save_dir.join("credentials.json");
                 let app_handle_save = app.app_handle();
                 app.listen_global("save", move |event: tauri::Event| {
                     let creds: Credentials =
                         serde_json::from_str(event.payload().unwrap()).unwrap();
-                    save_creds(creds, &write_save_file);
+                    save_creds(creds, &file_path);
                     PROCEED_CAMPNET_ATTEMPT = true;
                     std::thread::sleep(std::time::Duration::from_millis(3000));
                     app_handle_save.get_window("main").unwrap().hide().unwrap();
@@ -218,7 +221,7 @@ fn main() {
                         .unwrap();
                 });
                 connect_campnet(app.handle());
-                std::fs::create_dir_all(save_dir).unwrap();
+                std::fs::create_dir_all(app.path_resolver().app_config_dir().unwrap()).unwrap();
                 Ok(())
             })
             .system_tray(system_tray)
@@ -229,10 +232,12 @@ fn main() {
                     }
                     "show" => {
                         let window: tauri::Window = app.get_window("main").unwrap();
-                        let save_file = path::app_dir(&app.config())
+                        let file_path = app
+                            .path_resolver()
+                            .app_config_dir()
                             .unwrap()
                             .join("credentials.json");
-                        let creds = load_creds(&save_file);
+                        let creds = load_creds(&file_path);
                         if creds.is_ok() {
                             window.emit("credentials", creds.unwrap()).unwrap();
                         } else {
@@ -262,10 +267,12 @@ fn main() {
                             .unwrap();
                     }
                     "reconnect" => {
-                        let save_file = path::app_dir(&app.config())
+                        let file_path = app
+                            .path_resolver()
+                            .app_config_dir()
                             .unwrap()
                             .join("credentials.json");
-                        let creds = load_creds(&save_file);
+                        let creds = load_creds(&file_path);
                         if creds.is_ok() {
                             if PROCEED_CAMPNET_ATTEMPT {
                                 connect_campnet(app.app_handle());
@@ -288,12 +295,14 @@ fn main() {
                             )
                             .unwrap();
                         window.show().unwrap();
-                        let save_file = path::app_dir(&app.config())
+                        let file_path = app
+                            .path_resolver()
+                            .app_config_dir()
                             .unwrap()
                             .join("credentials.json");
-                        let creds = load_creds(&save_file);
+                        let creds = load_creds(&file_path);
                         if creds.is_ok() {
-                            std::fs::remove_file(&save_file).unwrap();
+                            std::fs::remove_file(&file_path).unwrap();
                         }
                         PROCEED_CAMPNET_ATTEMPT = false;
                     }
@@ -306,10 +315,12 @@ fn main() {
                     ..
                 } => {
                     let window: tauri::Window = app.get_window("main").unwrap();
-                    let save_file = path::app_dir(&app.config())
-                        .unwrap()
-                        .join("credentials.json");
-                    let creds = load_creds(&save_file);
+                        let file_path = app
+                            .path_resolver()
+                            .app_config_dir()
+                            .unwrap()
+                            .join("credentials.json");
+                        let creds = load_creds(&file_path);
                     if creds.is_ok() {
                         window.emit("credentials", creds.unwrap()).unwrap();
                     } else {

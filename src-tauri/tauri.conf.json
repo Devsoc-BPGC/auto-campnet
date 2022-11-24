@@ -56,9 +56,6 @@
     },
     "allowlist": {
       "all": false,
-      "path": {
-        "all": true
-      },
       "notification": {
         "all": true
       },
