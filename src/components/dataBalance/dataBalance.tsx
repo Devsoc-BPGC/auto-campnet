@@ -16,7 +16,7 @@ function DataInfo(props: { title: string; amount: number; unit: string }) {
     );
 }
 
-export function DataBalance(props: { username: string; password: string }) {
+export function DataBalance(props: { credentials: { username: string; password: string }}) {
     const [datas, setDatas] = useState<Array<number>>([1, 0, 0, 1, 0]);
     const [units, setUnits] = useState<Array<string>>(["", "", "", "", ""]);
     const [toShow, show] = useState<boolean>(false);
@@ -37,8 +37,8 @@ export function DataBalance(props: { username: string; password: string }) {
                     Body.form({
                         mode: "451",
                         json: JSON.stringify({
-                            username: props.username,
-                            password: props.password,
+                            username: props.credentials.username,
+                            password: props.credentials.password,
                             languageid: 1,
                             browser: "Chrome_106",
                         }),

@@ -7,13 +7,17 @@ import { DataBalance } from "./components/dataBalance/dataBalance";
 import { Credentials } from "./types";
 
 export function App() {
-    const [username, setUsername] = useState("");
-    const [password, setPassword] = useState("");
+    const [credentials, setCredentials] = useState({
+        username: "",
+        password: "",
+    });
 
     useEffect(() => {
         listen("credentials", (creds: Event<Credentials>) => {
-            setUsername(decodeURIComponent(creds.payload.username));
-            setPassword(decodeURIComponent(creds.payload.password));
+            setCredentials({
+                username: decodeURIComponent(creds.payload.username),
+                password: decodeURIComponent(creds.payload.password),
+            });
         });
     }, []);
 
@@ -33,12 +37,10 @@ export function App() {
             >
                 <div class={styles.mainContainer}>
                     <Login
-                        username={username}
-                        password={password}
-                        setUsername={setUsername}
-                        setPassword={setPassword}
+                        credentials={credentials}
+                        setCredentials={setCredentials}
                     />
-                    <DataBalance username={username} password={password} />
+                    <DataBalance credentials={credentials} />
                 </div>
             </ElevatedCard>
         </div>
