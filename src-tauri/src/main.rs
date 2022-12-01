@@ -198,14 +198,11 @@ fn main() {
                 } else {
                     app.get_window("main").unwrap().show().unwrap();
                 }
-                let app_handle_save = app.app_handle();
                 app.listen_global("save", move |event: tauri::Event| {
                     let creds: Credentials =
                         serde_json::from_str(event.payload().unwrap()).unwrap();
                     save_creds(creds, &file_path);
                     PROCEED_CAMPNET_ATTEMPT = true;
-                    std::thread::sleep(std::time::Duration::from_millis(3000));
-                    app_handle_save.get_window("main").unwrap().hide().unwrap();
                     Notification::new("com.riskycase.autocampnet")
                         .title("Credentials saved to disk")
                         .body("App will try to login to campnet whenever available")
