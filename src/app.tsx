@@ -12,6 +12,8 @@ export function App() {
         password: "",
     });
 
+    const [capsLock, setCapsLock] = useState(false);
+
     useEffect(() => {
         listen("credentials", (creds: Event<Credentials>) => {
             setCredentials({
@@ -19,11 +21,13 @@ export function App() {
                 password: decodeURIComponent(creds.payload.password),
             });
         });
+        document.addEventListener("visibilitychange", () => {
+            if (document.visibilityState === "hidden") emit("minimise");
+        });
+        window.addEventListener("keyup", (event) =>
+            setCapsLock(event.getModifierState("CapsLock"))
+        );
     }, []);
-
-    document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "hidden") emit("minimise");
-    });
 
     return (
         <div>
@@ -38,6 +42,7 @@ export function App() {
                 <div class={styles.mainContainer}>
                     <Login
                         credentials={credentials}
+                        capsLock={capsLock}
                         setCredentials={setCredentials}
                     />
                     <DataBalance credentials={credentials} />

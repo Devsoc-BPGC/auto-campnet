@@ -1,4 +1,10 @@
-import { Button, InputField, showToast } from "@cred/neopop-web/lib/components";
+import {
+    Button,
+    InputField,
+    showToast,
+    Tag,
+    Typography,
+} from "@cred/neopop-web/lib/components";
 import { StateUpdater, useEffect, useState } from "preact/hooks";
 import { fetch, Body } from "@tauri-apps/api/http";
 import { emit } from "@tauri-apps/api/event";
@@ -13,6 +19,7 @@ export function Login(props: {
         username: string;
         password: string;
     };
+    capsLock: boolean;
     setCredentials: StateUpdater<{
         username: string;
         password: string;
@@ -69,6 +76,16 @@ export function Login(props: {
                         margin: "0.5rem 0",
                     }}
                 />
+                {props.capsLock && (
+                    <Tag
+                        colorConfig={{
+                            background: "#010B14",
+                            color: "#F08D32",
+                        }}
+                    >
+                        CapsLock is On!
+                    </Tag>
+                )}
                 <Button
                     variant="primary"
                     kind="elevated"
