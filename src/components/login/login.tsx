@@ -2,6 +2,8 @@ import {
     Button,
     InputField,
     showToast,
+    Tag,
+    Typography,
 } from "@cred/neopop-web/lib/components";
 import { StateUpdater, useEffect, useState } from "preact/hooks";
 import { fetch, Body } from "@tauri-apps/api/http";
@@ -13,17 +15,26 @@ import bits_logo from "../../assets/bitslogo.png";
 import { ChangeEvent } from "preact/compat";
 
 export function Login(props: {
-    username: string;
-    password: string;
-    setUsername: StateUpdater<string>;
-    setPassword: StateUpdater<string>;
+    credentials: {
+        username: string;
+        password: string;
+    };
+    capsLock: boolean;
+    setCredentials: StateUpdater<{
+        username: string;
+        password: string;
+    }>;
 }) {
-    const [localUsername, setLocalUsername] = useState(props.username);
-    const [localPassword, setLocalPassword] = useState(props.password);
+    const [localUsername, setLocalUsername] = useState(
+        props.credentials.username
+    );
+    const [localPassword, setLocalPassword] = useState(
+        props.credentials.password
+    );
     useEffect(() => {
-        setLocalUsername(props.username);
-        setLocalPassword(props.password);
-    }, [props.username, props.password])
+        setLocalUsername(props.credentials.username);
+        setLocalPassword(props.credentials.password);
+    }, [props.credentials]);
     return (
         <div>
             <div class={styles.loginContainer}>
@@ -39,7 +50,9 @@ export function Login(props: {
                     // @ts-ignore
                     type="text"
                     onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                        setLocalUsername((event.target as HTMLInputElement).value)
+                        setLocalUsername(
+                            (event.target as HTMLInputElement).value
+                        )
                     }
                     value={localUsername}
                     autoFocus
@@ -54,13 +67,25 @@ export function Login(props: {
                     // @ts-ignore
                     type="password"
                     onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                        setLocalPassword((event.target as HTMLInputElement).value)
+                        setLocalPassword(
+                            (event.target as HTMLInputElement).value
+                        )
                     }
-                                        value={localPassword}
+                    value={localPassword}
                     style={{
                         margin: "0.5rem 0",
                     }}
                 />
+                {props.capsLock && (
+                    <Tag
+                        colorConfig={{
+                            background: "#010B14",
+                            color: "#F08D32",
+                        }}
+                    >
+                        CapsLock is On!
+                    </Tag>
+                )}
                 <Button
                     variant="primary"
                     kind="elevated"
@@ -96,11 +121,15 @@ export function Login(props: {
                                         autoCloseTime: 3000,
                                         content: "Credentias verified!",
                                     });
-                                    props.setUsername(localUsername);
-                                    props.setPassword(localPassword);
-                                    emit("save", {
+                                    props.setCredentials({
                                         username: localUsername,
                                         password: localPassword,
+                                    });
+                                    emit("save", {
+                                        username:
+                                            encodeURIComponent(localUsername),
+                                        password:
+                                            encodeURIComponent(localPassword),
                                     });
                                 } else {
                                     showToast("Incorrect credentials!", {

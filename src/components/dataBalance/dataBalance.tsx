@@ -4,16 +4,28 @@ import { useEffect, useState } from "preact/hooks";
 
 import styles from "./dataBalance.module.scss";
 
-export function DataBalance(props: { username: string; password: string }) {
+function DataInfo(props: { title: string; amount: number; unit: string }) {
+    return (
+        <div class={styles.dataInfo}>
+            <div>{props.title}</div>
+            <div>
+                {props.amount}
+                <span class={styles.dataUnit}>{props.unit}</span>
+            </div>
+        </div>
+    );
+}
+
+export function DataBalance(props: { credentials: { username: string; password: string }}) {
     const [datas, setDatas] = useState<Array<number>>([1, 0, 0, 1, 0]);
     const [units, setUnits] = useState<Array<string>>(["", "", "", "", ""]);
+    const [toShow, show] = useState<boolean>(false);
     const [balanceTimeout, setBalanceTimeOut] = useState<NodeJS.Timeout>();
 
     useEffect(() => {
         clearTimeout(balanceTimeout);
         getBalance();
     }, [props]);
-    console.log(datas);
 
     function getBalance() {
         let cookie = "";
@@ -25,8 +37,8 @@ export function DataBalance(props: { username: string; password: string }) {
                     Body.form({
                         mode: "451",
                         json: JSON.stringify({
-                            username: props.username,
-                            password: props.password,
+                            username: props.credentials.username,
+                            password: props.credentials.password,
                             languageid: 1,
                             browser: "Chrome_106",
                         }),
@@ -77,14 +89,12 @@ export function DataBalance(props: { username: string; password: string }) {
                     const trimmedNodes = [
                         ...nodes
                             .querySelector("#content3")
-                            ?.querySelectorAll("td.tabletext")!!
+                            ?.querySelectorAll("td.tabletext")!!,
                     ].slice(-5);
                     setDatas(
                         trimmedNodes.map((iter: any) =>
                             Number(
-                                (
-                                    iter.childNodes[0].nodeValue as string
-                                ).trim()
+                                (iter.childNodes[0].nodeValue as string).trim()
                             )
                         )
                     );
@@ -93,13 +103,14 @@ export function DataBalance(props: { username: string; password: string }) {
                             iter.children[0].id.replace(/Language./, "")
                         )
                     );
+                    show(true);
                 })
                 .then(() => setBalanceTimeOut(setTimeout(getBalance, 15000)))
                 .catch((err) => console.error(err))
         );
     }
 
-    return (
+    return toShow ? (
         <div class={styles.dataContainer}>
             <ScoreMeter
                 key={datas[4]}
@@ -116,9 +127,25 @@ export function DataBalance(props: { username: string; password: string }) {
                         : "excellent"
                 }
             />
-            <span>Data Limit: {`${datas[0]} ${units[0]}`}</span>
-            <span>Data Used: {`${datas[3]} ${units[3]}`}</span>
-            <span>Data Left: {`${datas[4]} ${units[4]}`}</span>
+            <div class={styles.infoContainer}>
+                <DataInfo
+                    title="Data Limit:"
+                    amount={datas[0]}
+                    unit={units[0]}
+                />
+                <DataInfo
+                    title="Data Used:"
+                    amount={datas[3]}
+                    unit={units[3]}
+                />
+                <DataInfo
+                    title="Data Left:"
+                    amount={datas[4]}
+                    unit={units[4]}
+                />
+            </div>
         </div>
+    ) : (
+        <></>
     );
 }

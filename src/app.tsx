@@ -7,19 +7,27 @@ import { DataBalance } from "./components/dataBalance/dataBalance";
 import { Credentials } from "./types";
 
 export function App() {
-    const [username, setUsername] = useState("");
-    const [password, setPassword] = useState("");
+    const [credentials, setCredentials] = useState({
+        username: "",
+        password: "",
+    });
+
+    const [capsLock, setCapsLock] = useState(false);
 
     useEffect(() => {
         listen("credentials", (creds: Event<Credentials>) => {
-            setUsername(creds.payload.username);
-            setPassword(creds.payload.password);
+            setCredentials({
+                username: decodeURIComponent(creds.payload.username),
+                password: decodeURIComponent(creds.payload.password),
+            });
         });
+        document.addEventListener("visibilitychange", () => {
+            if (document.visibilityState === "hidden") emit("minimise");
+        });
+        window.addEventListener("keyup", (event) =>
+            setCapsLock(event.getModifierState("CapsLock"))
+        );
     }, []);
-
-    document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "hidden") emit("minimise");
-    });
 
     return (
         <div>
@@ -33,12 +41,11 @@ export function App() {
             >
                 <div class={styles.mainContainer}>
                     <Login
-                        username={username}
-                        password={password}
-                        setUsername={setUsername}
-                        setPassword={setPassword}
+                        credentials={credentials}
+                        capsLock={capsLock}
+                        setCredentials={setCredentials}
                     />
-                    <DataBalance username={username} password={password} />
+                    <DataBalance credentials={credentials} />
                 </div>
             </ElevatedCard>
         </div>
