@@ -8,6 +8,10 @@ A small cross platform application that manages logging in to BITS Goa campus ne
 
 Download the latest build from [releases page](https://github.com/DevSoc-BPGC/auto-campnet/releases)
 
+### I need help in using this
+
+Refer the [project wiki](https://github.com/Devsoc-BPGC/auto-campnet/wiki)
+
 ## Contributing
 
 ### Relevant links
