@@ -4,13 +4,12 @@
     windows_subsystem = "windows"
 )]
 
-static LOGIN_ENDPOINT: &str = "https://campnet.bits-goa.ac.in:8090";
-
 use serde::{Deserialize, Serialize};
 use std::io::Write;
+use std::sync::Mutex;
 use tauri::{
     api::{file, notification::Notification},
-    Manager,
+    Manager, State,
 };
 extern crate chrono;
 extern crate timer;
@@ -19,6 +18,13 @@ extern crate timer;
 struct Credentials {
     username: String,
     password: String,
+}
+
+#[derive(Clone)]
+struct ConnectState {
+    login: bool,
+    logout: bool,
+    login_endpoint: String,
 }
 
 fn save_creds(creds: Credentials, save_file: &std::path::Path) {
@@ -37,8 +43,9 @@ fn load_creds(save_file: &std::path::Path) -> Result<Credentials, String> {
 }
 
 fn logout_campnet(
-    creds: Credentials,
     client: reqwest::blocking::Client,
+    creds: Credentials,
+    login_endpoint: String,
 ) -> Result<reqwest::blocking::Response, reqwest::Error> {
     let body: String = format!(
         "mode=193&username={}&a={}&producttype=1",
@@ -49,7 +56,7 @@ fn logout_campnet(
             .as_millis()
     );
     return client
-        .post(LOGIN_ENDPOINT.to_owned() + "/logout.xml")
+        .post(login_endpoint + "/logout.xml")
         .header("Content-Type", "application/x-www-form-urlencoded")
         .header("Content-Length", body.chars().count())
         .body(body)
@@ -57,8 +64,9 @@ fn logout_campnet(
 }
 
 fn login_campnet(
-    creds: Credentials,
     client: reqwest::blocking::Client,
+    creds: Credentials,
+    login_endpoint: String,
 ) -> Result<reqwest::blocking::Response, reqwest::Error> {
     let body: String = format!(
         "mode=191&username={}&password={}&a={}&producttype=1",
@@ -70,39 +78,42 @@ fn login_campnet(
             .as_millis()
     );
     return client
-        .post(LOGIN_ENDPOINT.to_owned() + "/login.xml")
+        .post(login_endpoint.to_owned() + "/login.xml")
         .header("Content-Type", "application/x-www-form-urlencoded")
         .header("Content-Length", body.chars().count())
         .body(body)
         .send();
 }
 
-static mut PROCEED_CAMPNET_ATTEMPT: bool = false;
-static mut LOGOUT_CAMPNET: bool = false;
-
-unsafe fn connect_campnet(app_handle: tauri::AppHandle) {
-    let tray_handle = app_handle.tray_handle();
-    let resources_resolver = app_handle.path_resolver();
+fn connect_campnet(app: tauri::AppHandle, app_state: State<Mutex<ConnectState>>) {
+    let tray_handle = app.tray_handle();
+    let resources_resolver = app.path_resolver();
     let active_icon_path = resources_resolver
         .resolve_resource("resources/icons/active.png")
         .unwrap();
     let passive_icon_path = resources_resolver
         .resolve_resource("resources/icons/passive.png")
         .unwrap();
-    let file_path = app_handle
+    let file_path = app
         .path_resolver()
         .app_config_dir()
         .unwrap()
         .join("credentials.json");
     let client = reqwest::blocking::Client::new();
-    if PROCEED_CAMPNET_ATTEMPT {
-        let campnet_status = client.head(LOGIN_ENDPOINT.to_owned()).send();
+    if app_state.lock().unwrap().login {
+        let campnet_status = client
+            .head(app_state.lock().unwrap().login_endpoint.to_owned())
+            .send();
         if campnet_status.is_ok() {
             let login_status = client.head("https://www.google.com").send();
             if login_status.is_err() {
                 let creds = load_creds(&file_path);
                 if creds.is_ok() {
-                    let res = login_campnet(creds.unwrap(), client);
+                    let res = login_campnet(
+                        client,
+                        creds.unwrap(),
+                        app_state.lock().unwrap().login_endpoint.to_string(),
+                    );
                     if res.is_ok() {
                         let res_body: String = res.unwrap().text().unwrap();
                         if res_body.contains("LIVE") {
@@ -120,7 +131,7 @@ unsafe fn connect_campnet(app_handle: tauri::AppHandle) {
                                 .body("Incorrect credentials were provided")
                                 .show()
                                 .unwrap();
-                            PROCEED_CAMPNET_ATTEMPT = false;
+                            app_state.lock().unwrap().login = false;
                             tray_handle
                                 .set_icon(tauri::Icon::File(passive_icon_path))
                                 .unwrap();
@@ -130,7 +141,7 @@ unsafe fn connect_campnet(app_handle: tauri::AppHandle) {
                                 .body("Daily data limit exceeded on credentials")
                                 .show()
                                 .unwrap();
-                            PROCEED_CAMPNET_ATTEMPT = false;
+                            app_state.lock().unwrap().login = false;
                             tray_handle
                                 .set_icon(tauri::Icon::File(passive_icon_path))
                                 .unwrap();
@@ -140,7 +151,7 @@ unsafe fn connect_campnet(app_handle: tauri::AppHandle) {
                                 .body("There was an issue with the login attempt")
                                 .show()
                                 .unwrap();
-                            PROCEED_CAMPNET_ATTEMPT = false;
+                            app_state.lock().unwrap().login = false;
                             tray_handle
                                 .set_icon(tauri::Icon::File(passive_icon_path))
                                 .unwrap();
@@ -149,10 +160,14 @@ unsafe fn connect_campnet(app_handle: tauri::AppHandle) {
                 }
             }
         }
-    } else if LOGOUT_CAMPNET {
+    } else if app_state.lock().unwrap().logout {
         let creds = load_creds(&file_path);
         if creds.is_ok() {
-            let res = logout_campnet(creds.unwrap(), client);
+            let res = logout_campnet(
+                client,
+                creds.unwrap(),
+                app_state.lock().unwrap().login_endpoint.to_string(),
+            );
             if res.is_ok() {
                 let res_body: String = res.unwrap().text().unwrap();
                 if res_body.contains("LOGIN") {
@@ -162,162 +177,87 @@ unsafe fn connect_campnet(app_handle: tauri::AppHandle) {
                         .unwrap();
                 }
             }
-            LOGOUT_CAMPNET = false;
+            app_state.lock().unwrap().logout = false;
         }
     }
 
     let callback_timer = timer::Timer::new();
     let _callback_gaurd =
         callback_timer.schedule_with_delay(chrono::Duration::milliseconds(2500), move || {
-            connect_campnet(app_handle.app_handle());
+            connect_campnet(app.app_handle(), app.state::<Mutex<ConnectState>>());
         });
     std::thread::sleep(std::time::Duration::from_millis(3000));
 }
 
 fn main() {
-    unsafe {
-        let tray_menu = tauri::SystemTrayMenu::new()
-            .add_item(tauri::CustomMenuItem::new("show", "Show window"))
-            .add_native_item(tauri::SystemTrayMenuItem::Separator)
-            .add_item(tauri::CustomMenuItem::new("reconnect", "Force reconnect"))
-            .add_item(tauri::CustomMenuItem::new("logout", "Logout"))
-            .add_item(tauri::CustomMenuItem::new("delete", "Delete credentials"))
-            .add_native_item(tauri::SystemTrayMenuItem::Separator)
-            .add_item(tauri::CustomMenuItem::new("quit", "Quit"));
-        let system_tray = tauri::SystemTray::new().with_menu(tray_menu);
-        tauri::Builder::default()
-            .setup(|app: &mut tauri::App| {
-                let file_path = app
-                    .path_resolver()
-                    .app_config_dir()
+    let tray_menu = tauri::SystemTrayMenu::new()
+        .add_item(tauri::CustomMenuItem::new("show", "Show window"))
+        .add_native_item(tauri::SystemTrayMenuItem::Separator)
+        .add_item(tauri::CustomMenuItem::new("reconnect", "Force reconnect"))
+        .add_item(tauri::CustomMenuItem::new("logout", "Logout"))
+        .add_item(tauri::CustomMenuItem::new("delete", "Delete credentials"))
+        .add_native_item(tauri::SystemTrayMenuItem::Separator)
+        .add_item(tauri::CustomMenuItem::new("quit", "Quit"));
+    let system_tray = tauri::SystemTray::new().with_menu(tray_menu);
+    tauri::Builder::default()
+        .setup(|app: &mut tauri::App| {
+            app.manage(Mutex::new(ConnectState {
+                login: false,
+                logout: false,
+                login_endpoint: String::new(),
+            }));
+            let file_path = app
+                .path_resolver()
+                .app_config_dir()
+                .unwrap()
+                .join("credentials.json");
+            let creds = load_creds(&file_path);
+            let app_state: State<Mutex<ConnectState>> = app.state::<Mutex<ConnectState>>();
+            if creds.is_ok() {
+                app_state.lock().unwrap().login_endpoint =
+                    String::from("https://campnet.bits-goa.ac.in:8090");
+                app_state.lock().unwrap().login = true;
+            } else {
+                app.get_window("main").unwrap().show().unwrap();
+            }
+            let app_handle_save = app.app_handle();
+            app.listen_global("save", move |event: tauri::Event| {
+                let creds: Credentials = serde_json::from_str(event.payload().unwrap()).unwrap();
+                save_creds(creds, &file_path);
+                let app_state = app_handle_save.state::<Mutex<ConnectState>>();
+                app_state.lock().unwrap().login = true;
+                Notification::new("com.riskycase.autocampnet")
+                    .title("Credentials saved to disk")
+                    .body("App will try to login to campnet whenever available")
+                    .show()
+                    .unwrap();
+            });
+            let app_handle_minimise = app.app_handle();
+            app.listen_global("minimise", move |_event: tauri::Event| {
+                app_handle_minimise
+                    .get_window("main")
                     .unwrap()
-                    .join("credentials.json");
-                let creds = load_creds(&file_path);
-                if creds.is_ok() {
-                    PROCEED_CAMPNET_ATTEMPT = true;
-                } else {
-                    app.get_window("main").unwrap().show().unwrap();
+                    .hide()
+                    .unwrap();
+            });
+            std::fs::create_dir_all(app.path_resolver().app_config_dir().unwrap()).unwrap();
+            connect_campnet(app.app_handle(), app_state);
+            Ok(())
+        })
+        .system_tray(system_tray)
+        .on_system_tray_event(|app: &tauri::AppHandle, event| match event {
+            tauri::SystemTrayEvent::MenuItemClick { id, .. } => match id.as_str() {
+                "quit" => {
+                    std::process::exit(0);
                 }
-                app.listen_global("save", move |event: tauri::Event| {
-                    let creds: Credentials =
-                        serde_json::from_str(event.payload().unwrap()).unwrap();
-                    save_creds(creds, &file_path);
-                    PROCEED_CAMPNET_ATTEMPT = true;
-                    Notification::new("com.riskycase.autocampnet")
-                        .title("Credentials saved to disk")
-                        .body("App will try to login to campnet whenever available")
-                        .show()
-                        .unwrap();
-                });
-                let app_handle_minimise = app.app_handle();
-                app.listen_global("minimise", move |_event: tauri::Event| {
-                    app_handle_minimise
-                        .get_window("main")
-                        .unwrap()
-                        .hide()
-                        .unwrap();
-                });
-                connect_campnet(app.handle());
-                std::fs::create_dir_all(app.path_resolver().app_config_dir().unwrap()).unwrap();
-                Ok(())
-            })
-            .system_tray(system_tray)
-            .on_system_tray_event(|app: &tauri::AppHandle, event| match event {
-                tauri::SystemTrayEvent::MenuItemClick { id, .. } => match id.as_str() {
-                    "quit" => {
-                        std::process::exit(0);
-                    }
-                    "show" => {
-                        let window: tauri::Window = app.get_window("main").unwrap();
-                        let file_path = app
-                            .path_resolver()
-                            .app_config_dir()
-                            .unwrap()
-                            .join("credentials.json");
-                        let creds = load_creds(&file_path);
-                        if creds.is_ok() {
-                            window.emit("credentials", creds.unwrap()).unwrap();
-                        } else {
-                            window
-                                .emit(
-                                    "credentials",
-                                    Credentials {
-                                        username: "".into(),
-                                        password: "".into(),
-                                    },
-                                )
-                                .unwrap();
-                        }
-                        window.show().unwrap();
-                        window.unminimize().unwrap();
-                        window.set_focus().unwrap();
-                    }
-                    "logout" => {
-                        LOGOUT_CAMPNET = true;
-                        PROCEED_CAMPNET_ATTEMPT = false;
-                        app.tray_handle()
-                            .set_icon(tauri::Icon::File(
-                                app.path_resolver()
-                                    .resolve_resource("resources/icons/passive.png")
-                                    .unwrap(),
-                            ))
-                            .unwrap();
-                    }
-                    "reconnect" => {
-                        let file_path = app
-                            .path_resolver()
-                            .app_config_dir()
-                            .unwrap()
-                            .join("credentials.json");
-                        let creds = load_creds(&file_path);
-                        if creds.is_ok() {
-                            if PROCEED_CAMPNET_ATTEMPT {
-                                connect_campnet(app.app_handle());
-                            }
-                            PROCEED_CAMPNET_ATTEMPT = true;
-                        } else {
-                            let window: tauri::Window = app.get_window("main").unwrap();
-                            window.show().unwrap();
-                        }
-                    }
-                    "delete" => {
-                        let window: tauri::Window = app.get_window("main").unwrap();
-                        window
-                            .emit(
-                                "credentials",
-                                Credentials {
-                                    username: "".into(),
-                                    password: "".into(),
-                                },
-                            )
-                            .unwrap();
-                        window.show().unwrap();
-                        let file_path = app
-                            .path_resolver()
-                            .app_config_dir()
-                            .unwrap()
-                            .join("credentials.json");
-                        let creds = load_creds(&file_path);
-                        if creds.is_ok() {
-                            std::fs::remove_file(&file_path).unwrap();
-                        }
-                        PROCEED_CAMPNET_ATTEMPT = false;
-                    }
-                    _ => {}
-                },
-                tauri::SystemTrayEvent::LeftClick {
-                    tray_id: _,
-                    position: _,
-                    size: _,
-                    ..
-                } => {
+                "show" => {
                     let window: tauri::Window = app.get_window("main").unwrap();
-                        let file_path = app
-                            .path_resolver()
-                            .app_config_dir()
-                            .unwrap()
-                            .join("credentials.json");
-                        let creds = load_creds(&file_path);
+                    let file_path = app
+                        .path_resolver()
+                        .app_config_dir()
+                        .unwrap()
+                        .join("credentials.json");
+                    let creds = load_creds(&file_path);
                     if creds.is_ok() {
                         window.emit("credentials", creds.unwrap()).unwrap();
                     } else {
@@ -335,9 +275,94 @@ fn main() {
                     window.unminimize().unwrap();
                     window.set_focus().unwrap();
                 }
+                "logout" => {
+                    let app_state = app.state::<Mutex<ConnectState>>();
+                    app_state.lock().unwrap().logout = true;
+                    app_state.lock().unwrap().login = false;
+                    app.tray_handle()
+                        .set_icon(tauri::Icon::File(
+                            app.path_resolver()
+                                .resolve_resource("resources/icons/passive.png")
+                                .unwrap(),
+                        ))
+                        .unwrap();
+                }
+                "reconnect" => {
+                    let file_path = app
+                        .path_resolver()
+                        .app_config_dir()
+                        .unwrap()
+                        .join("credentials.json");
+                    let creds = load_creds(&file_path);
+                    if creds.is_ok() {
+                        let app_state = app.state::<Mutex<ConnectState>>();
+                        if app_state.lock().unwrap().login {
+                            connect_campnet(app.app_handle(), app_state);
+                        }
+                        app.state::<Mutex<ConnectState>>().lock().unwrap().login = true;
+                    } else {
+                        let window: tauri::Window = app.get_window("main").unwrap();
+                        window.show().unwrap();
+                    }
+                }
+                "delete" => {
+                    let window: tauri::Window = app.get_window("main").unwrap();
+                    window
+                        .emit(
+                            "credentials",
+                            Credentials {
+                                username: "".into(),
+                                password: "".into(),
+                            },
+                        )
+                        .unwrap();
+                    window.show().unwrap();
+                    let file_path = app
+                        .path_resolver()
+                        .app_config_dir()
+                        .unwrap()
+                        .join("credentials.json");
+                    let creds = load_creds(&file_path);
+                    if creds.is_ok() {
+                        std::fs::remove_file(&file_path).unwrap();
+                    }
+                    let app_state = app.state::<Mutex<ConnectState>>();
+                    app_state.lock().unwrap().login = false;
+                }
                 _ => {}
-            })
-            .run(tauri::generate_context!())
-            .expect("error while running tauri application");
-    }
+            },
+            tauri::SystemTrayEvent::LeftClick {
+                tray_id: _,
+                position: _,
+                size: _,
+                ..
+            } => {
+                let window: tauri::Window = app.get_window("main").unwrap();
+                let file_path = app
+                    .path_resolver()
+                    .app_config_dir()
+                    .unwrap()
+                    .join("credentials.json");
+                let creds = load_creds(&file_path);
+                if creds.is_ok() {
+                    window.emit("credentials", creds.unwrap()).unwrap();
+                } else {
+                    window
+                        .emit(
+                            "credentials",
+                            Credentials {
+                                username: "".into(),
+                                password: "".into(),
+                            },
+                        )
+                        .unwrap();
+                }
+                window.show().unwrap();
+                window.unminimize().unwrap();
+                window.set_focus().unwrap();
+            }
+            _ => {}
+        })
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
 }
