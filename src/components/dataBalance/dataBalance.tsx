@@ -22,6 +22,10 @@ export function DataBalance(props: { credentials: { username: string; password: 
     const [toShow, show] = useState<boolean>(false);
     const [balanceTimeout, setBalanceTimeOut] = useState<NodeJS.Timeout>();
 
+    if(props.credentials.username === '' || props.credentials.password === '') {
+        show(false);
+    }
+
     useEffect(() => {
         clearTimeout(balanceTimeout);
         getBalance();
@@ -106,7 +110,7 @@ export function DataBalance(props: { credentials: { username: string; password: 
                     show(true);
                 })
                 .then(() => setBalanceTimeOut(setTimeout(getBalance, 15000)))
-                .catch((err) => console.error(err))
+                .catch((err) => show(false))
         );
     }
 
