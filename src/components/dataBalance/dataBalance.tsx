@@ -27,6 +27,10 @@ export function DataBalance(props: { credentials: { username: string; password: 
         getBalance();
     }, [props]);
 
+    if (props.credentials.username === "" || props.credentials.password === "") {
+        show(false);
+    }
+
     function getBalance() {
         let cookie = "";
         let csrf = "";
