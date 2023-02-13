@@ -353,13 +353,13 @@ fn get_remaining_data(app: tauri::AppHandle, initial_run: bool) {
                             if current_notification_state == NotificationState::Used50 {
                                 Notification::new("com.riskycase.autocampnet")
                                     .title("50% data warning!")
-                                    .body("You have used 50% of your allotted data, consider slowing down")
+                                    .body("Consider slowing down")
                                     .show()
                                     .unwrap();
                             } else if current_notification_state == NotificationState::Used90 {
                                 Notification::new("com.riskycase.autocampnet")
                                     .title("90% data warning!")
-                                    .body("You have used 90% of your allotted data, tread the interwebs slowly")
+                                    .body("Tread the interwebs slowly")
                                     .show()
                                     .unwrap();
                             }
