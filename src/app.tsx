@@ -6,6 +6,9 @@ import { useEffect, useState } from "preact/hooks";
 import { DataBalance } from "./components/dataBalance/dataBalance";
 import { Credentials } from "./types";
 
+import initLogo from "./assets/logos/bits-goa.png";
+import initBG from "./assets/backgrounds/bits-goa.jpg";
+
 export function App() {
     const [credentials, setCredentials] = useState({
         username: "",
@@ -13,6 +16,8 @@ export function App() {
     });
 
     const [capsLock, setCapsLock] = useState(false);
+    const [logo,setLogo] = useState(initLogo);
+    const [BG,setBG] = useState(initBG);
 
     useEffect(() => {
         listen("credentials", (creds: Event<Credentials>) => {
@@ -21,6 +26,7 @@ export function App() {
                 password: decodeURIComponent(creds.payload.password),
             });
         });
+        document.documentElement.style.setProperty("background-image", `url(${BG})`);
         document.addEventListener("visibilitychange", () => {
             if (document.visibilityState === "hidden") emit("minimise");
         });
@@ -44,6 +50,7 @@ export function App() {
                         credentials={credentials}
                         capsLock={capsLock}
                         setCredentials={setCredentials}
+                        logo={logo}
                     />
                     <DataBalance credentials={credentials} />
                 </div>

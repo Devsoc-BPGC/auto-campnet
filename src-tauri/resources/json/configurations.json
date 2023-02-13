@@ -1,0 +1,9 @@
+[
+    {
+        "display_name": "BITS Goa",
+        "background_src": "bits-goa.jpg",
+        "logo_src": "bits-goa.png",
+        "login_endpoint": "https://campnet.bits-goa.ac.in:8090",
+        "portal_endpoint": "https://campnet.bits-goa.ac.in:8093"
+    }
+]

@@ -11,7 +11,6 @@ import { emit } from "@tauri-apps/api/event";
 
 import styles from "./login.module.scss";
 
-import bits_logo from "../../assets/bitslogo.png";
 import { ChangeEvent } from "preact/compat";
 
 export function Login(props: {
@@ -24,6 +23,7 @@ export function Login(props: {
         username: string;
         password: string;
     }>;
+    logo: string;
 }) {
     const [localUsername, setLocalUsername] = useState(
         props.credentials.username
@@ -39,7 +39,7 @@ export function Login(props: {
         <div>
             <div class={styles.loginContainer}>
                 <img
-                    src={bits_logo}
+                    src={props.logo}
                     class={styles.bitsLogo}
                     alt={"BITS Goa Logo"}
                 />
