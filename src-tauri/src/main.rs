@@ -30,6 +30,13 @@ struct TrafficStats {
     remaining: f32,
 }
 
+#[derive(Clone, PartialEq)]
+enum NotificationState {
+    None,
+    Used50,
+    Used90,
+}
+
 #[derive(Clone)]
 struct ConnectState {
     login_endpoint: String,
@@ -40,6 +47,7 @@ struct ConnectState {
     csrf: String,
     traffic: TrafficStats,
     traffic_guard: Option<timer::Guard>,
+    last_notification_state: NotificationState,
 }
 
 fn save_creds(creds: Credentials, save_file: &std::path::Path) {
@@ -316,6 +324,33 @@ fn get_remaining_data(app: tauri::AppHandle) {
                         used: matches.next().unwrap(),
                         remaining: matches.next().unwrap(),
                     };
+                    let data_usage = traffic.used / traffic.total;
+                    let current_notification_state = if data_usage < 0.5 {
+                        NotificationState::None
+                    } else if data_usage < 0.9 {
+                        NotificationState::Used50
+                    } else {
+                        NotificationState::Used90
+                    };
+                    if app_state.lock().unwrap().last_notification_state
+                        != current_notification_state
+                    {
+                        if current_notification_state == NotificationState::Used50 {
+                            Notification::new("com.riskycase.autocampnet")
+                                .title("50% data warning!")
+                                .body("You have used 50% of your allotted data, consider slowing down")
+                                .show()
+                                .unwrap();
+                        } else if current_notification_state == NotificationState::Used90 {
+                            Notification::new("com.riskycase.autocampnet")
+                                .title("90% data warning!")
+                                .body("You have used 90% of your allotted data, tread the interwebs slowly")
+                                .show()
+                                .unwrap();
+                        }
+                        app_state.lock().unwrap().last_notification_state =
+                            current_notification_state
+                    }
                     app_state.lock().unwrap().traffic = traffic.clone();
                     app.get_window("main")
                         .unwrap()
@@ -365,6 +400,7 @@ fn main() {
                     remaining: 0.0,
                 },
                 traffic_guard: Option::None,
+                last_notification_state: NotificationState::None,
             })));
             let file_path = app
                 .path_resolver()
