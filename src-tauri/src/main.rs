@@ -87,95 +87,108 @@ fn login_campnet(
         .send();
 }
 
-fn connect_campnet(app: tauri::AppHandle) {
-    let app_state = app.state::<Arc<Mutex<ConnectState>>>();
-    app_state.lock().unwrap().login_guard = Option::None;
-    let tray_handle = app.tray_handle();
-    let resources_resolver = app.path_resolver();
-    let active_icon_path = resources_resolver
-        .resolve_resource("resources/icons/active.png")
-        .unwrap();
-    let passive_icon_path = resources_resolver
-        .resolve_resource("resources/icons/passive.png")
-        .unwrap();
-    let credentials = app_state.lock().unwrap().credentials.to_owned();
-    let client = reqwest::blocking::Client::new();
-    let campnet_status = client
-        .head(app_state.lock().unwrap().login_endpoint.to_owned())
-        .send();
-    if campnet_status.is_ok() {
-        let login_status = client.head("https://www.google.com").send();
-        if login_status.is_err() {
-            let res = login_campnet(
-                client,
-                credentials,
-                app_state.lock().unwrap().login_endpoint.to_string(),
-            );
-            if res.is_ok() {
-                let res_body: String = res.unwrap().text().unwrap();
-                if res_body.contains("LIVE") {
-                    Notification::new("com.riskycase.autocampnet")
-                        .title("Connected to Campnet!")
-                        .body("Logged in successfully to BPGC network")
-                        .show()
-                        .unwrap();
-                    tray_handle
-                        .set_icon(tauri::Icon::File(active_icon_path))
-                        .unwrap();
-                    let app_handle_next = app.app_handle();
-                    let callback_timer = timer::Timer::new();
-                    let callback_gaurd = callback_timer.schedule_with_delay(
-                        chrono::Duration::milliseconds(2500),
-                        move || {
-                            connect_campnet(app_handle_next.app_handle());
-                        },
-                    );
-                    app_state.lock().unwrap().login_guard = Option::Some(callback_gaurd.to_owned());
-                    std::thread::sleep(std::time::Duration::from_secs(3));
-                } else if res_body.contains("failed") {
-                    Notification::new("com.riskycase.autocampnet")
-                        .title("Could not connect to Campnet!")
-                        .body("Incorrect credentials were provided")
-                        .show()
-                        .unwrap();
-                    tray_handle
-                        .set_icon(tauri::Icon::File(passive_icon_path))
-                        .unwrap();
-                } else if res_body.contains("exceeded") {
-                    Notification::new("com.riskycase.autocampnet")
-                        .title("Could not connect to Campnet!")
-                        .body("Daily data limit exceeded on credentials")
-                        .show()
-                        .unwrap();
-                    tray_handle
-                        .set_icon(tauri::Icon::File(passive_icon_path))
-                        .unwrap();
-                } else {
-                    Notification::new("com.riskycase.autocampnet")
-                        .title("Could not to Campnet!")
-                        .body("There was an issue with the login attempt")
-                        .show()
-                        .unwrap();
-                    tray_handle
-                        .set_icon(tauri::Icon::File(passive_icon_path))
-                        .unwrap();
+fn connect_campnet(app: tauri::AppHandle, initial_run: bool) {
+    if !initial_run {
+        let app_state = app.state::<Arc<Mutex<ConnectState>>>();
+        app_state.lock().unwrap().login_guard = Option::None;
+        let tray_handle = app.tray_handle();
+        let resources_resolver = app.path_resolver();
+        let active_icon_path = resources_resolver
+            .resolve_resource("resources/icons/active.png")
+            .unwrap();
+        let passive_icon_path = resources_resolver
+            .resolve_resource("resources/icons/passive.png")
+            .unwrap();
+        let credentials = app_state.lock().unwrap().credentials.to_owned();
+        let client = reqwest::blocking::Client::new();
+        let campnet_status = client
+            .head(app_state.lock().unwrap().login_endpoint.to_owned())
+            .send();
+        if campnet_status.is_ok() {
+            let login_status = client.head("https://www.google.com").send();
+            if login_status.is_err() {
+                let res = login_campnet(
+                    client,
+                    credentials,
+                    app_state.lock().unwrap().login_endpoint.to_string(),
+                );
+                if res.is_ok() {
+                    let res_body: String = res.unwrap().text().unwrap();
+                    if res_body.contains("LIVE") {
+                        Notification::new("com.riskycase.autocampnet")
+                            .title("Connected to Campnet!")
+                            .body("Logged in successfully to BPGC network")
+                            .show()
+                            .unwrap();
+                        tray_handle
+                            .set_icon(tauri::Icon::File(active_icon_path))
+                            .unwrap();
+                        let app_handle_next = app.app_handle();
+                        let callback_timer = timer::Timer::new();
+                        let callback_gaurd = callback_timer.schedule_with_delay(
+                            chrono::Duration::milliseconds(2500),
+                            move || {
+                                connect_campnet(app_handle_next.app_handle(), false);
+                            },
+                        );
+                        app_state.lock().unwrap().login_guard =
+                            Option::Some(callback_gaurd.to_owned());
+                        std::thread::sleep(std::time::Duration::from_secs(3));
+                    } else if res_body.contains("failed") {
+                        Notification::new("com.riskycase.autocampnet")
+                            .title("Could not connect to Campnet!")
+                            .body("Incorrect credentials were provided")
+                            .show()
+                            .unwrap();
+                        tray_handle
+                            .set_icon(tauri::Icon::File(passive_icon_path))
+                            .unwrap();
+                    } else if res_body.contains("exceeded") {
+                        Notification::new("com.riskycase.autocampnet")
+                            .title("Could not connect to Campnet!")
+                            .body("Daily data limit exceeded on credentials")
+                            .show()
+                            .unwrap();
+                        tray_handle
+                            .set_icon(tauri::Icon::File(passive_icon_path))
+                            .unwrap();
+                    } else {
+                        Notification::new("com.riskycase.autocampnet")
+                            .title("Could not to Campnet!")
+                            .body("There was an issue with the login attempt")
+                            .show()
+                            .unwrap();
+                        tray_handle
+                            .set_icon(tauri::Icon::File(passive_icon_path))
+                            .unwrap();
+                    }
                 }
+            } else {
+                let app_handle_next = app.app_handle();
+                let callback_timer = timer::Timer::new();
+                let callback_gaurd = callback_timer.schedule_with_delay(
+                    chrono::Duration::milliseconds(2500),
+                    move || {
+                        connect_campnet(app_handle_next.app_handle(), false);
+                    },
+                );
+                app_state.lock().unwrap().login_guard = Option::Some(callback_gaurd.to_owned());
+                tray_handle
+                    .set_icon(tauri::Icon::File(active_icon_path))
+                    .unwrap();
+                std::thread::sleep(std::time::Duration::from_secs(3));
             }
-        } else {
-            let app_handle_next = app.app_handle();
-            let callback_timer = timer::Timer::new();
-            let callback_gaurd = callback_timer.schedule_with_delay(
-                chrono::Duration::milliseconds(2500),
-                move || {
-                    connect_campnet(app_handle_next.app_handle());
-                },
-            );
-            app_state.lock().unwrap().login_guard = Option::Some(callback_gaurd.to_owned());
-            tray_handle
-                .set_icon(tauri::Icon::File(active_icon_path))
-                .unwrap();
-            std::thread::sleep(std::time::Duration::from_secs(3));
         }
+    } else {
+        let app_handle_next = app.app_handle();
+        let app_state = app.state::<Arc<Mutex<ConnectState>>>();
+        let callback_timer = timer::Timer::new();
+        let callback_gaurd =
+            callback_timer.schedule_with_delay(chrono::Duration::zero(), move || {
+                connect_campnet(app_handle_next.app_handle(), false);
+            });
+        app_state.lock().unwrap().login_guard = Option::Some(callback_gaurd.to_owned());
+        std::thread::sleep(std::time::Duration::from_secs(1));
     }
 }
 
@@ -250,124 +263,137 @@ fn get_csrf(app: tauri::AppHandle) -> Result<(), reqwest::Error> {
     }
 }
 
-fn get_remaining_data(app: tauri::AppHandle) {
-    let app_state = app.state::<Arc<Mutex<ConnectState>>>();
-    app_state.lock().unwrap().traffic_guard = Option::None;
-    let client = reqwest::blocking::Client::new();
-    let campnet_status = client
-        .head(app_state.lock().unwrap().login_endpoint.to_owned())
-        .send();
-    if campnet_status.is_ok() {
-        let cookie_result = get_cookie(app.app_handle());
-        if cookie_result.is_ok() {
-            let csrf_result = get_csrf(app.app_handle());
-            if csrf_result.is_ok() {
-                let cookie = app_state.lock().unwrap().cookie.to_string();
-                let csrf = app_state.lock().unwrap().csrf.to_string();
-                let portal_endpoint = app_state.lock().unwrap().portal_endpoint.to_string();
-                let data_result = client
-                    .get(
-                        portal_endpoint.to_string()
-                            + "/userportal/webpages/myaccount/AccountStatus.jsp",
-                    )
-                    .query(&[
-                        ("popup", "0"),
-                        (
-                            "t",
-                            format!(
-                                "{}",
-                                std::time::SystemTime::now()
-                                    .duration_since(std::time::UNIX_EPOCH)
+fn get_remaining_data(app: tauri::AppHandle, initial_run: bool) {
+    if !initial_run {
+        let app_state = app.state::<Arc<Mutex<ConnectState>>>();
+        app_state.lock().unwrap().traffic_guard = Option::None;
+        let client = reqwest::blocking::Client::new();
+        let campnet_status = client
+            .head(app_state.lock().unwrap().login_endpoint.to_owned())
+            .send();
+        if campnet_status.is_ok() {
+            let cookie_result = get_cookie(app.app_handle());
+            if cookie_result.is_ok() {
+                let csrf_result = get_csrf(app.app_handle());
+                if csrf_result.is_ok() {
+                    let cookie = app_state.lock().unwrap().cookie.to_string();
+                    let csrf = app_state.lock().unwrap().csrf.to_string();
+                    let portal_endpoint = app_state.lock().unwrap().portal_endpoint.to_string();
+                    let data_result = client
+                        .get(
+                            portal_endpoint.to_string()
+                                + "/userportal/webpages/myaccount/AccountStatus.jsp",
+                        )
+                        .query(&[
+                            ("popup", "0"),
+                            (
+                                "t",
+                                format!(
+                                    "{}",
+                                    std::time::SystemTime::now()
+                                        .duration_since(std::time::UNIX_EPOCH)
+                                        .unwrap()
+                                        .as_millis()
+                                )
+                                .as_str(),
+                            ),
+                        ])
+                        .header("X-CSRF-Token", csrf)
+                        .header(reqwest::header::COOKIE, cookie)
+                        .header(
+                            reqwest::header::USER_AGENT,
+                            format!("AutoCampnetRuntime/{}", app.package_info().version),
+                        )
+                        .header(
+                            reqwest::header::REFERER,
+                            portal_endpoint.to_string()
+                                + "/userportal/webpages/myaccount/login.jsp",
+                        )
+                        .send();
+                    if data_result.is_ok() {
+                        let regex = Regex::new(r">\s+(\d+\.?\d*)").unwrap();
+                        let body = data_result
+                            .unwrap()
+                            .text()
+                            .unwrap()
+                            .split("Language.CycleDataTrasfer")
+                            .into_iter()
+                            .nth(1)
+                            .unwrap()
+                            .to_string();
+                        let mut matches = regex
+                            .find_iter(body.split("</table>").into_iter().nth(0).unwrap())
+                            .into_iter()
+                            .map(|data| {
+                                data.as_str()
+                                    .replace(">", "")
+                                    .trim()
+                                    .to_string()
+                                    .parse::<f32>()
                                     .unwrap()
-                                    .as_millis()
-                            )
-                            .as_str(),
-                        ),
-                    ])
-                    .header("X-CSRF-Token", csrf)
-                    .header(reqwest::header::COOKIE, cookie)
-                    .header(
-                        reqwest::header::USER_AGENT,
-                        format!("AutoCampnetRuntime/{}", app.package_info().version),
-                    )
-                    .header(
-                        reqwest::header::REFERER,
-                        portal_endpoint.to_string() + "/userportal/webpages/myaccount/login.jsp",
-                    )
-                    .send();
-                if data_result.is_ok() {
-                    let regex = Regex::new(r">\s+(\d+\.?\d*)").unwrap();
-                    let body = data_result
-                        .unwrap()
-                        .text()
-                        .unwrap()
-                        .split("Language.CycleDataTrasfer")
-                        .into_iter()
-                        .nth(1)
-                        .unwrap()
-                        .to_string();
-                    let mut matches = regex
-                        .find_iter(body.split("</table>").into_iter().nth(0).unwrap())
-                        .into_iter()
-                        .map(|data| {
-                            data.as_str()
-                                .replace(">", "")
-                                .trim()
-                                .to_string()
-                                .parse::<f32>()
-                                .unwrap()
-                        });
-                    let traffic = TrafficStats {
-                        total: matches.next().unwrap(),
-                        last: matches.next().unwrap(),
-                        current: matches.next().unwrap(),
-                        used: matches.next().unwrap(),
-                        remaining: matches.next().unwrap(),
-                    };
-                    let data_usage = traffic.used / traffic.total;
-                    let current_notification_state = if data_usage < 0.5 {
-                        NotificationState::None
-                    } else if data_usage < 0.9 {
-                        NotificationState::Used50
-                    } else {
-                        NotificationState::Used90
-                    };
-                    if app_state.lock().unwrap().last_notification_state
-                        != current_notification_state
-                    {
-                        if current_notification_state == NotificationState::Used50 {
-                            Notification::new("com.riskycase.autocampnet")
-                                .title("50% data warning!")
-                                .body("You have used 50% of your allotted data, consider slowing down")
-                                .show()
-                                .unwrap();
-                        } else if current_notification_state == NotificationState::Used90 {
-                            Notification::new("com.riskycase.autocampnet")
-                                .title("90% data warning!")
-                                .body("You have used 90% of your allotted data, tread the interwebs slowly")
-                                .show()
-                                .unwrap();
+                            });
+                        let traffic = TrafficStats {
+                            total: matches.next().unwrap(),
+                            last: matches.next().unwrap(),
+                            current: matches.next().unwrap(),
+                            used: matches.next().unwrap(),
+                            remaining: matches.next().unwrap(),
+                        };
+                        let data_usage = traffic.used / traffic.total;
+                        let current_notification_state = if data_usage < 0.5 {
+                            NotificationState::None
+                        } else if data_usage < 0.9 {
+                            NotificationState::Used50
+                        } else {
+                            NotificationState::Used90
+                        };
+                        if app_state.lock().unwrap().last_notification_state
+                            != current_notification_state
+                        {
+                            if current_notification_state == NotificationState::Used50 {
+                                Notification::new("com.riskycase.autocampnet")
+                                    .title("50% data warning!")
+                                    .body("You have used 50% of your allotted data, consider slowing down")
+                                    .show()
+                                    .unwrap();
+                            } else if current_notification_state == NotificationState::Used90 {
+                                Notification::new("com.riskycase.autocampnet")
+                                    .title("90% data warning!")
+                                    .body("You have used 90% of your allotted data, tread the interwebs slowly")
+                                    .show()
+                                    .unwrap();
+                            }
+                            app_state.lock().unwrap().last_notification_state =
+                                current_notification_state
                         }
-                        app_state.lock().unwrap().last_notification_state =
-                            current_notification_state
+                        app_state.lock().unwrap().traffic = traffic.clone();
+                        app.get_window("main")
+                            .unwrap()
+                            .emit("traffic", traffic.clone())
+                            .unwrap();
                     }
-                    app_state.lock().unwrap().traffic = traffic.clone();
-                    app.get_window("main")
-                        .unwrap()
-                        .emit("traffic", traffic.clone())
-                        .unwrap();
                 }
             }
         }
+        let app_handle_next = app.app_handle();
+        let callback_timer = timer::Timer::new();
+        let callback_gaurd =
+            callback_timer.schedule_with_delay(chrono::Duration::milliseconds(30000), move || {
+                get_remaining_data(app_handle_next.app_handle(), false);
+            });
+        app_state.lock().unwrap().traffic_guard = Option::Some(callback_gaurd.to_owned());
+        std::thread::sleep(std::time::Duration::from_secs(35));
+    } else {
+        let app_handle_next = app.app_handle();
+        let app_state = app.state::<Arc<Mutex<ConnectState>>>();
+        let callback_timer = timer::Timer::new();
+        let callback_gaurd =
+            callback_timer.schedule_with_delay(chrono::Duration::zero(), move || {
+                get_remaining_data(app_handle_next.app_handle(), false);
+            });
+        app_state.lock().unwrap().traffic_guard = Option::Some(callback_gaurd.to_owned());
+        std::thread::sleep(std::time::Duration::from_secs(1));
     }
-    let app_handle_next = app.app_handle();
-    let callback_timer = timer::Timer::new();
-    let callback_gaurd =
-        callback_timer.schedule_with_delay(chrono::Duration::milliseconds(30000), move || {
-            get_remaining_data(app_handle_next.app_handle());
-        });
-    app_state.lock().unwrap().traffic_guard = Option::Some(callback_gaurd.to_owned());
-    std::thread::sleep(std::time::Duration::from_secs(35));
 }
 
 fn main() {
@@ -416,7 +442,7 @@ fn main() {
                 save_creds(creds, &file_path);
                 let app_handle_thread = app_handle_save.app_handle();
                 std::thread::spawn(move || {
-                    connect_campnet(app_handle_thread.app_handle());
+                    connect_campnet(app_handle_thread.app_handle(), false);
                 });
                 Notification::new("com.riskycase.autocampnet")
                     .title("Credentials saved to disk")
@@ -441,8 +467,8 @@ fn main() {
                 app_state.lock().unwrap().portal_endpoint =
                     String::from("https://campnet.bits-goa.ac.in:8093");
                 app_state.lock().unwrap().credentials = creds.unwrap();
-                connect_campnet(app.app_handle());
-                get_remaining_data(app.app_handle());
+                connect_campnet(app.app_handle(), true);
+                get_remaining_data(app.app_handle(), true);
             } else {
                 app.get_window("main").unwrap().show().unwrap();
             }
@@ -510,7 +536,7 @@ fn main() {
                         let window: tauri::Window = app.get_window("main").unwrap();
                         window.show().unwrap();
                     } else {
-                        connect_campnet(app.app_handle());
+                        connect_campnet(app.app_handle(), false);
                     }
                 }
                 "delete" => {
