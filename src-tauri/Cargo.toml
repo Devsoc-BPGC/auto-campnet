@@ -1,6 +1,6 @@
 [package]
 name = "app"
-version = "1.1.0"
+version = "2.0.0"
 description = "Connect to BITS Goa campus network automatically"
 authors = ["Hrishikesh Patil <hrishikeshpatil.754@gmail.com>"]
 license = "MIT"
@@ -17,7 +17,7 @@ tauri-build = { version = "1.2.1", features = [] }
 [dependencies]
 serde_json = "1.0.88"
 serde = { version = "1.0.147", features = ["derive"] }
-tauri = { version = "1.2.1", features = ["fs-create-dir", "fs-read-dir", "fs-read-file", "fs-remove-file", "fs-write-file", "http-all", "icon-png", "notification", "notification-all", "system-tray", "window-hide", "window-show", "window-start-dragging"] }
+tauri = { version = "1.2.1", features = ["fs-create-dir", "fs-read-dir", "fs-read-file", "fs-remove-file", "fs-write-file", "icon-png", "notification", "system-tray", "window-hide", "window-show", "window-start-dragging"] }
 timer = "0.2.0"
 chrono = "0.4.23"
 reqwest = { version = "0.11.13", features = ["blocking"] }

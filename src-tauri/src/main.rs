@@ -30,6 +30,15 @@ struct TrafficStats {
     remaining: f32,
 }
 
+#[derive(Serialize, Deserialize, Clone)]
+struct TrafficUnits {
+    total: String,
+    last: String,
+    current: String,
+    used: String,
+    remaining: String,
+}
+
 #[derive(Clone, PartialEq)]
 enum NotificationState {
     None,
@@ -46,6 +55,7 @@ struct ConnectState {
     cookie: String,
     csrf: String,
     traffic: TrafficStats,
+    traffic_units: TrafficUnits,
     traffic_guard: Option<timer::Guard>,
     last_notification_state: NotificationState,
 }
@@ -311,7 +321,9 @@ fn get_remaining_data(app: tauri::AppHandle, initial_run: bool) {
                         )
                         .send();
                     if data_result.is_ok() {
-                        let regex = Regex::new(r">\s+(\d+\.?\d*)").unwrap();
+                        let regex_traffic = Regex::new(r">\s+(\d+\.?\d*)").unwrap();
+                        let regex_traffic_units =
+                            Regex::new(r">\s+\d+\.?\d*&nbsp;<label id='Language\.(\w+)").unwrap();
                         let body = data_result
                             .unwrap()
                             .text()
@@ -321,7 +333,7 @@ fn get_remaining_data(app: tauri::AppHandle, initial_run: bool) {
                             .nth(1)
                             .unwrap()
                             .to_string();
-                        let mut matches = regex
+                        let mut matches = regex_traffic
                             .find_iter(body.split("</table>").into_iter().nth(0).unwrap())
                             .into_iter()
                             .map(|data| {
@@ -339,6 +351,7 @@ fn get_remaining_data(app: tauri::AppHandle, initial_run: bool) {
                             used: matches.next().unwrap(),
                             remaining: matches.next().unwrap(),
                         };
+                        app_state.lock().unwrap().traffic = traffic.clone();
                         let data_usage = traffic.used / traffic.total;
                         let current_notification_state = if data_usage < 0.5 {
                             NotificationState::None
@@ -347,6 +360,28 @@ fn get_remaining_data(app: tauri::AppHandle, initial_run: bool) {
                         } else {
                             NotificationState::Used90
                         };
+                        let mut matches_unit = regex_traffic_units
+                            .find_iter(body.split("</table>").into_iter().nth(0).unwrap())
+                            .into_iter()
+                            .map(|data| {
+                                data.as_str()
+                                    .replace(">", "")
+                                    .trim()
+                                    .to_string()
+                                    .split("Language.")
+                                    .into_iter()
+                                    .nth(1)
+                                    .unwrap()
+                                    .to_string()
+                            });
+                        let traffic_units = TrafficUnits {
+                            total: matches_unit.next().unwrap().to_string(),
+                            last: matches_unit.next().unwrap().to_string(),
+                            current: matches_unit.next().unwrap().to_string(),
+                            used: matches_unit.next().unwrap().to_string(),
+                            remaining: matches_unit.next().unwrap().to_string(),
+                        };
+                        app_state.lock().unwrap().traffic_units = traffic_units.clone();
                         if app_state.lock().unwrap().last_notification_state
                             != current_notification_state
                         {
@@ -366,10 +401,13 @@ fn get_remaining_data(app: tauri::AppHandle, initial_run: bool) {
                             app_state.lock().unwrap().last_notification_state =
                                 current_notification_state
                         }
-                        app_state.lock().unwrap().traffic = traffic.clone();
                         app.get_window("main")
                             .unwrap()
                             .emit("traffic", traffic.clone())
+                            .unwrap();
+                        app.get_window("main")
+                            .unwrap()
+                            .emit("traffic_units", traffic_units.clone())
                             .unwrap();
                     }
                 }
@@ -378,11 +416,11 @@ fn get_remaining_data(app: tauri::AppHandle, initial_run: bool) {
         let app_handle_next = app.app_handle();
         let callback_timer = timer::Timer::new();
         let callback_gaurd =
-            callback_timer.schedule_with_delay(chrono::Duration::milliseconds(30000), move || {
+            callback_timer.schedule_with_delay(chrono::Duration::seconds(45), move || {
                 get_remaining_data(app_handle_next.app_handle(), false);
             });
         app_state.lock().unwrap().traffic_guard = Option::Some(callback_gaurd.to_owned());
-        std::thread::sleep(std::time::Duration::from_secs(35));
+        std::thread::sleep(std::time::Duration::from_secs(55));
     } else {
         let app_handle_next = app.app_handle();
         let app_state = app.state::<Arc<Mutex<ConnectState>>>();
@@ -424,6 +462,13 @@ fn main() {
                     current: 0.0,
                     used: 0.0,
                     remaining: 0.0,
+                },
+                traffic_units: TrafficUnits {
+                    total: "".to_string(),
+                    last: "".to_string(),
+                    current: "".to_string(),
+                    used: "".to_string(),
+                    remaining: "".to_string(),
                 },
                 traffic_guard: Option::None,
                 last_notification_state: NotificationState::None,
@@ -485,6 +530,15 @@ fn main() {
                     let window: tauri::Window = app.get_window("main").unwrap();
                     window
                         .emit("credentials", app_state.lock().unwrap().credentials.clone())
+                        .unwrap();
+                    window
+                        .emit("traffic", app_state.lock().unwrap().traffic.clone())
+                        .unwrap();
+                    window
+                        .emit(
+                            "traffic_units",
+                            app_state.lock().unwrap().traffic_units.clone(),
+                        )
                         .unwrap();
                     window.show().unwrap();
                     window.unminimize().unwrap();
@@ -552,9 +606,32 @@ fn main() {
                         username: "".to_owned(),
                         password: "".to_owned(),
                     };
+                    app_state.lock().unwrap().traffic = TrafficStats {
+                        total: 0.0,
+                        last: 0.0,
+                        current: 0.0,
+                        used: 0.0,
+                        remaining: 0.0,
+                    };
+                    app_state.lock().unwrap().traffic_units = TrafficUnits {
+                        total: "".to_string(),
+                        last: "".to_string(),
+                        current: "".to_string(),
+                        used: "".to_string(),
+                        remaining: "".to_string(),
+                    };
                     let window: tauri::Window = app.get_window("main").unwrap();
                     window
                         .emit("credentials", app_state.lock().unwrap().credentials.clone())
+                        .unwrap();
+                    window
+                        .emit("traffic", app_state.lock().unwrap().traffic.clone())
+                        .unwrap();
+                    window
+                        .emit(
+                            "traffic_units",
+                            app_state.lock().unwrap().traffic_units.clone(),
+                        )
                         .unwrap();
                     window.show().unwrap();
                 }
@@ -570,6 +647,15 @@ fn main() {
                 let window: tauri::Window = app.get_window("main").unwrap();
                 window
                     .emit("credentials", app_state.lock().unwrap().credentials.clone())
+                    .unwrap();
+                window
+                    .emit("traffic", app_state.lock().unwrap().traffic.clone())
+                    .unwrap();
+                window
+                    .emit(
+                        "traffic_units",
+                        app_state.lock().unwrap().traffic_units.clone(),
+                    )
                     .unwrap();
                 window.show().unwrap();
                 window.unminimize().unwrap();
