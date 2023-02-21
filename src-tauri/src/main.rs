@@ -44,10 +44,11 @@ enum NotificationState {
     None,
     Used50,
     Used90,
+    Used100,
 }
 
 #[derive(Clone)]
-struct ConnectState {
+struct AppState {
     login_endpoint: String,
     credentials: Credentials,
     login_guard: Option<timer::Guard>,
@@ -99,7 +100,7 @@ fn login_campnet(
 
 fn connect_campnet(app: tauri::AppHandle, initial_run: bool) {
     if !initial_run {
-        let app_state = app.state::<Arc<Mutex<ConnectState>>>();
+        let app_state = app.state::<Arc<Mutex<AppState>>>();
         app_state.lock().unwrap().login_guard = Option::None;
         let tray_handle = app.tray_handle();
         let resources_resolver = app.path_resolver();
@@ -191,7 +192,7 @@ fn connect_campnet(app: tauri::AppHandle, initial_run: bool) {
         }
     } else {
         let app_handle_next = app.app_handle();
-        let app_state = app.state::<Arc<Mutex<ConnectState>>>();
+        let app_state = app.state::<Arc<Mutex<AppState>>>();
         let callback_timer = timer::Timer::new();
         let callback_gaurd =
             callback_timer.schedule_with_delay(chrono::Duration::zero(), move || {
@@ -204,7 +205,7 @@ fn connect_campnet(app: tauri::AppHandle, initial_run: bool) {
 
 fn get_cookie(app: tauri::AppHandle) -> Result<(), reqwest::Error> {
     let client = reqwest::blocking::Client::new();
-    let app_state = app.state::<Arc<Mutex<ConnectState>>>();
+    let app_state = app.state::<Arc<Mutex<AppState>>>();
     let credentials = app_state.lock().unwrap().credentials.clone();
     let body: String = format!(
         "mode=451&json=%7B%22username%22%3A%22{}%22%2C%22password%22%3A%22{}%22%2C%22languageid%22%3A%221%22%2C%22browser%22%3A%22Chrome_109%22%7D&t={}",
@@ -241,7 +242,7 @@ fn get_cookie(app: tauri::AppHandle) -> Result<(), reqwest::Error> {
 
 fn get_csrf(app: tauri::AppHandle) -> Result<(), reqwest::Error> {
     let client = reqwest::blocking::Client::new();
-    let app_state = app.state::<Arc<Mutex<ConnectState>>>();
+    let app_state = app.state::<Arc<Mutex<AppState>>>();
     let cookie = app_state.lock().unwrap().cookie.to_string();
     let response = client
         .get(
@@ -275,7 +276,7 @@ fn get_csrf(app: tauri::AppHandle) -> Result<(), reqwest::Error> {
 
 fn get_remaining_data(app: tauri::AppHandle, initial_run: bool) {
     if !initial_run {
-        let app_state = app.state::<Arc<Mutex<ConnectState>>>();
+        let app_state = app.state::<Arc<Mutex<AppState>>>();
         app_state.lock().unwrap().traffic_guard = Option::None;
         let client = reqwest::blocking::Client::new();
         let campnet_status = client
@@ -357,8 +358,10 @@ fn get_remaining_data(app: tauri::AppHandle, initial_run: bool) {
                             NotificationState::None
                         } else if data_usage < 0.9 {
                             NotificationState::Used50
-                        } else {
+                        } else if data_usage < 1.0 {
                             NotificationState::Used90
+                        } else {
+                            NotificationState::Used100
                         };
                         let mut matches_unit = regex_traffic_units
                             .find_iter(body.split("</table>").into_iter().nth(0).unwrap())
@@ -423,7 +426,7 @@ fn get_remaining_data(app: tauri::AppHandle, initial_run: bool) {
         std::thread::sleep(std::time::Duration::from_secs(55));
     } else {
         let app_handle_next = app.app_handle();
-        let app_state = app.state::<Arc<Mutex<ConnectState>>>();
+        let app_state = app.state::<Arc<Mutex<AppState>>>();
         let callback_timer = timer::Timer::new();
         let callback_gaurd =
             callback_timer.schedule_with_delay(chrono::Duration::zero(), move || {
@@ -431,6 +434,55 @@ fn get_remaining_data(app: tauri::AppHandle, initial_run: bool) {
             });
         app_state.lock().unwrap().traffic_guard = Option::Some(callback_gaurd.to_owned());
         std::thread::sleep(std::time::Duration::from_secs(1));
+    }
+}
+
+#[tauri::command]
+fn credential_check(
+    username: String,
+    password: String,
+    app: tauri::AppHandle,
+) -> Result<(), String> {
+    let app_state = app.state::<Arc<Mutex<AppState>>>();
+    let client = reqwest::blocking::Client::new();
+    let campnet_status = client
+        .head(app_state.lock().unwrap().login_endpoint.to_owned())
+        .send();
+    if campnet_status.is_ok() {
+        let body: String = format!(
+            "mode=193&username={}&a={}&producttype=1",
+            username,
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_millis()
+        );
+        client
+            .post(app_state.lock().unwrap().login_endpoint.to_owned() + "/logout.xml")
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .header("Content-Length", body.chars().count())
+            .body(body)
+            .send()
+            .unwrap();
+        let res = login_campnet(
+            client,
+            Credentials { username, password },
+            app_state.lock().unwrap().login_endpoint.to_string(),
+        );
+        if res.is_ok() {
+            let res_body: String = res.unwrap().text().unwrap();
+            if res_body.contains("LIVE") || res_body.contains("exceeded") {
+                Ok(())
+            } else if res_body.contains("failed") {
+                Err("INVALIDCRED".to_string())
+            } else {
+                Err("UNKNOWN".to_string())
+            }
+        } else {
+            Err("UNKNOWN".to_string())
+        }
+    } else {
+        Err("NOSOPHOS".to_string())
     }
 }
 
@@ -446,14 +498,14 @@ fn main() {
     let system_tray = tauri::SystemTray::new().with_menu(tray_menu);
     tauri::Builder::default()
         .setup(|app: &mut tauri::App| {
-            app.manage(Arc::new(Mutex::new(ConnectState {
-                login_endpoint: String::new(),
+            app.manage(Arc::new(Mutex::new(AppState {
+                login_endpoint: "https://campnet.bits-goa.ac.in:8090".to_string(),
                 credentials: Credentials {
                     username: "".to_string(),
                     password: "".to_string(),
                 },
                 login_guard: Option::None,
-                portal_endpoint: "".to_string(),
+                portal_endpoint: "https://campnet.bits-goa.ac.in:8093".to_string(),
                 cookie: "".to_string(),
                 csrf: "".to_string(),
                 traffic: TrafficStats {
@@ -482,12 +534,13 @@ fn main() {
             let app_handle_save = app.app_handle();
             app.listen_global("save", move |event: tauri::Event| {
                 let creds: Credentials = serde_json::from_str(event.payload().unwrap()).unwrap();
-                let app_state = app_handle_save.state::<Arc<Mutex<ConnectState>>>();
+                let app_state = app_handle_save.state::<Arc<Mutex<AppState>>>();
                 app_state.lock().unwrap().credentials = creds.clone();
                 save_creds(creds, &file_path);
                 let app_handle_thread = app_handle_save.app_handle();
                 std::thread::spawn(move || {
                     connect_campnet(app_handle_thread.app_handle(), false);
+                    get_remaining_data(app_handle_thread.app_handle(), false);
                 });
                 Notification::new("com.riskycase.autocampnet")
                     .title("Credentials saved to disk")
@@ -504,8 +557,7 @@ fn main() {
                     .unwrap();
             });
             std::fs::create_dir_all(app.path_resolver().app_config_dir().unwrap()).unwrap();
-            let app_state: State<Arc<Mutex<ConnectState>>> =
-                app.state::<Arc<Mutex<ConnectState>>>();
+            let app_state: State<Arc<Mutex<AppState>>> = app.state::<Arc<Mutex<AppState>>>();
             if creds.is_ok() {
                 app_state.lock().unwrap().login_endpoint =
                     String::from("https://campnet.bits-goa.ac.in:8090");
@@ -526,7 +578,7 @@ fn main() {
                     std::process::exit(0);
                 }
                 "show" => {
-                    let app_state = app.state::<Arc<Mutex<ConnectState>>>();
+                    let app_state = app.state::<Arc<Mutex<AppState>>>();
                     let window: tauri::Window = app.get_window("main").unwrap();
                     window
                         .emit("credentials", app_state.lock().unwrap().credentials.clone())
@@ -547,7 +599,7 @@ fn main() {
                 "logout" => {
                     let app_handle_logout = app.app_handle();
                     let client = reqwest::blocking::Client::new();
-                    let app_state = app_handle_logout.state::<Arc<Mutex<ConnectState>>>();
+                    let app_state = app_handle_logout.state::<Arc<Mutex<AppState>>>();
                     app_state.lock().unwrap().login_guard = Option::None;
                     let body: String = format!(
                         "mode=193&username={}&a={}&producttype=1",
@@ -583,14 +635,16 @@ fn main() {
                     }
                 }
                 "reconnect" => {
-                    let app_state = app.state::<Arc<Mutex<ConnectState>>>();
+                    let app_state = app.state::<Arc<Mutex<AppState>>>();
                     let creds = app_state.lock().unwrap().credentials.to_owned();
                     app_state.lock().unwrap().login_guard = Option::None;
+                    app_state.lock().unwrap().traffic_guard = Option::None;
                     if (creds.username.len() == 0) | (creds.password.len() == 0) {
                         let window: tauri::Window = app.get_window("main").unwrap();
                         window.show().unwrap();
                     } else {
                         connect_campnet(app.app_handle(), false);
+                        get_remaining_data(app.app_handle(), false);
                     }
                 }
                 "delete" => {
@@ -600,8 +654,9 @@ fn main() {
                         .unwrap()
                         .join("credentials.json");
                     std::fs::remove_file(&file_path).unwrap();
-                    let app_state = app.state::<Arc<Mutex<ConnectState>>>();
+                    let app_state = app.state::<Arc<Mutex<AppState>>>();
                     app_state.lock().unwrap().login_guard = Option::None;
+                    app_state.lock().unwrap().traffic_guard = Option::None;
                     app_state.lock().unwrap().credentials = Credentials {
                         username: "".to_owned(),
                         password: "".to_owned(),
@@ -643,7 +698,7 @@ fn main() {
                 size: _,
                 ..
             } => {
-                let app_state = app.state::<Arc<Mutex<ConnectState>>>();
+                let app_state = app.state::<Arc<Mutex<AppState>>>();
                 let window: tauri::Window = app.get_window("main").unwrap();
                 window
                     .emit("credentials", app_state.lock().unwrap().credentials.clone())
@@ -663,6 +718,7 @@ fn main() {
             }
             _ => {}
         })
+        .invoke_handler(tauri::generate_handler![credential_check])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
