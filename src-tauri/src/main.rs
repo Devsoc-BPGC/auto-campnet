@@ -105,10 +105,10 @@ fn connect_campnet(app: tauri::AppHandle, initial_run: bool) {
         let tray_handle = app.tray_handle();
         let resources_resolver = app.path_resolver();
         let active_icon_path = resources_resolver
-            .resolve_resource("resources/icons/active.png")
+            .resolve_resource("resources/icons/tray_active.png")
             .unwrap();
-        let passive_icon_path = resources_resolver
-            .resolve_resource("resources/icons/passive.png")
+        let inactive_icon_path = resources_resolver
+            .resolve_resource("resources/icons/tray_inactive.png")
             .unwrap();
         let credentials = app_state.lock().unwrap().credentials.to_owned();
         let client = reqwest::blocking::Client::new();
@@ -152,7 +152,7 @@ fn connect_campnet(app: tauri::AppHandle, initial_run: bool) {
                             .show()
                             .unwrap();
                         tray_handle
-                            .set_icon(tauri::Icon::File(passive_icon_path))
+                            .set_icon(tauri::Icon::File(inactive_icon_path))
                             .unwrap();
                     } else if res_body.contains("exceeded") {
                         Notification::new("com.riskycase.autocampnet")
@@ -161,7 +161,7 @@ fn connect_campnet(app: tauri::AppHandle, initial_run: bool) {
                             .show()
                             .unwrap();
                         tray_handle
-                            .set_icon(tauri::Icon::File(passive_icon_path))
+                            .set_icon(tauri::Icon::File(inactive_icon_path))
                             .unwrap();
                     } else {
                         Notification::new("com.riskycase.autocampnet")
@@ -170,7 +170,7 @@ fn connect_campnet(app: tauri::AppHandle, initial_run: bool) {
                             .show()
                             .unwrap();
                         tray_handle
-                            .set_icon(tauri::Icon::File(passive_icon_path))
+                            .set_icon(tauri::Icon::File(inactive_icon_path))
                             .unwrap();
                     }
                 }
@@ -619,7 +619,7 @@ fn main() {
                         app.tray_handle()
                             .set_icon(tauri::Icon::File(
                                 app.path_resolver()
-                                    .resolve_resource("resources/icons/passive.png")
+                                    .resolve_resource("resources/icons/tray_inactive.png")
                                     .unwrap(),
                             ))
                             .unwrap();
