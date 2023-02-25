@@ -12,7 +12,7 @@
   },
   "tauri": {
     "systemTray": {
-      "iconPath": "resources/icons/tray_inactive.png",
+      "iconPath": "resources/icons/inactive.png",
       "iconAsTemplate": true
     },
     "bundle": {

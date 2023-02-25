@@ -39,7 +39,7 @@ struct TrafficUnits {
     remaining: String,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Copy)]
 enum NotificationState {
     None,
     Used50,
@@ -105,10 +105,16 @@ fn connect_campnet(app: tauri::AppHandle, initial_run: bool) {
         let tray_handle = app.tray_handle();
         let resources_resolver = app.path_resolver();
         let active_icon_path = resources_resolver
-            .resolve_resource("resources/icons/tray_active.png")
+            .resolve_resource("resources/icons/active.png")
+            .unwrap();
+        let used_50_icon_path = resources_resolver
+            .resolve_resource("resources/icons/used_50.png")
+            .unwrap();
+        let used_90_icon_path = resources_resolver
+            .resolve_resource("resources/icons/used_90.png")
             .unwrap();
         let inactive_icon_path = resources_resolver
-            .resolve_resource("resources/icons/tray_inactive.png")
+            .resolve_resource("resources/icons/inactive.png")
             .unwrap();
         let credentials = app_state.lock().unwrap().credentials.to_owned();
         let client = reqwest::blocking::Client::new();
@@ -131,9 +137,21 @@ fn connect_campnet(app: tauri::AppHandle, initial_run: bool) {
                             .body("Logged in successfully to BPGC network")
                             .show()
                             .unwrap();
-                        tray_handle
-                            .set_icon(tauri::Icon::File(active_icon_path))
-                            .unwrap();
+                        let current_notification_state =
+                            app_state.lock().unwrap().last_notification_state;
+                        if current_notification_state == NotificationState::None {
+                            tray_handle
+                                .set_icon(tauri::Icon::File(active_icon_path))
+                                .unwrap();
+                        } else if current_notification_state == NotificationState::Used50 {
+                            tray_handle
+                                .set_icon(tauri::Icon::File(used_50_icon_path))
+                                .unwrap();
+                        } else if current_notification_state == NotificationState::Used90 {
+                            tray_handle
+                                .set_icon(tauri::Icon::File(used_90_icon_path))
+                                .unwrap();
+                        }
                         let app_handle_next = app.app_handle();
                         let callback_timer = timer::Timer::new();
                         let callback_gaurd = callback_timer.schedule_with_delay(
@@ -619,7 +637,7 @@ fn main() {
                         app.tray_handle()
                             .set_icon(tauri::Icon::File(
                                 app.path_resolver()
-                                    .resolve_resource("resources/icons/tray_inactive.png")
+                                    .resolve_resource("resources/icons/inactive.png")
                                     .unwrap(),
                             ))
                             .unwrap();
