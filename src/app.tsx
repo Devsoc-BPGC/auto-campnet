@@ -5,6 +5,7 @@ import { ElevatedCard, ToastContainer } from "@cred/neopop-web/lib/components";
 import { useEffect, useState } from "preact/hooks";
 import { DataBalance } from "./components/dataBalance/dataBalance";
 import { Credentials, Traffic, TrafficUnits } from "./types";
+import { Credits } from "./components/credits/credits";
 
 import initLogo from "./assets/logos/bits-goa.png";
 import initBG from "./assets/backgrounds/bits-goa.jpg";
@@ -83,6 +84,7 @@ export function App() {
                         trafficUnits={trafficUnits}
                     />
                 </div>
+                <Credits />
             </ElevatedCard>
         </div>
     );
