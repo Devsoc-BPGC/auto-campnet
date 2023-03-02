@@ -258,7 +258,7 @@ fn get_cookie(app: tauri::AppHandle) -> Result<(), reqwest::Error> {
     }
 }
 
-fn get_csrf(app: tauri::AppHandle) -> Result<(), reqwest::Error> {
+fn get_csrf(app: tauri::AppHandle) -> Result<(), ()> {
     let client = reqwest::blocking::Client::new();
     let app_state = app.state::<Arc<Mutex<AppState>>>();
     let cookie = app_state.lock().unwrap().cookie.to_string();
@@ -276,19 +276,24 @@ fn get_csrf(app: tauri::AppHandle) -> Result<(), reqwest::Error> {
     if response.is_ok() {
         let regex = Regex::new(r"k3n = '(.+)'").unwrap();
         let body = response.unwrap().text().unwrap();
-        let matches = regex.captures(body.as_str()).unwrap();
-        app_state.lock().unwrap().csrf = matches
-            .get(0)
-            .unwrap()
-            .as_str()
-            .split("'")
-            .into_iter()
-            .nth(1)
-            .unwrap()
-            .to_string();
-        Ok(())
+        let matches = regex.captures(body.as_str());
+        if matches.is_some() {
+            app_state.lock().unwrap().csrf = matches
+                .unwrap()
+                .get(0)
+                .unwrap()
+                .as_str()
+                .split("'")
+                .into_iter()
+                .nth(1)
+                .unwrap()
+                .to_string();
+            Ok(())
+        } else {
+            Err(())
+        }
     } else {
-        Err(response.err().unwrap())
+        Err(())
     }
 }
 
@@ -475,24 +480,27 @@ fn credential_check(
                 .unwrap()
                 .as_millis()
         );
-        client
+        let initial_res = client
             .post(app_state.lock().unwrap().login_endpoint.to_owned() + "/logout.xml")
             .header("Content-Type", "application/x-www-form-urlencoded")
             .header("Content-Length", body.chars().count())
             .body(body)
-            .send()
-            .unwrap();
-        let res = login_campnet(
-            client,
-            Credentials { username, password },
-            app_state.lock().unwrap().login_endpoint.to_string(),
-        );
-        if res.is_ok() {
-            let res_body: String = res.unwrap().text().unwrap();
-            if res_body.contains("LIVE") || res_body.contains("exceeded") {
-                Ok(())
-            } else if res_body.contains("failed") {
-                Err("INVALIDCRED".to_string())
+            .send();
+        if initial_res.is_ok() {
+            let res = login_campnet(
+                client,
+                Credentials { username, password },
+                app_state.lock().unwrap().login_endpoint.to_string(),
+            );
+            if res.is_ok() {
+                let res_body: String = res.unwrap().text().unwrap();
+                if res_body.contains("LIVE") || res_body.contains("exceeded") {
+                    Ok(())
+                } else if res_body.contains("failed") {
+                    Err("INVALIDCRED".to_string())
+                } else {
+                    Err("UNKNOWN".to_string())
+                }
             } else {
                 Err("UNKNOWN".to_string())
             }
