@@ -345,35 +345,57 @@ fn get_remaining_data(app: tauri::AppHandle, initial_run: bool) {
                         )
                         .send();
                     if data_result.is_ok() {
-                        let regex_traffic = Regex::new(r">\s+(\d+\.?\d*)").unwrap();
-                        let regex_traffic_units =
-                            Regex::new(r">\s+\d+\.?\d*&nbsp;<label id='Language\.(\w+)").unwrap();
-                        let body = data_result
-                            .unwrap()
-                            .text()
-                            .unwrap()
-                            .split("Language.CycleDataTrasfer")
-                            .into_iter()
-                            .nth(1)
-                            .unwrap()
-                            .to_string();
-                        let mut matches = regex_traffic
-                            .find_iter(body.split("</table>").into_iter().nth(0).unwrap())
-                            .into_iter()
-                            .map(|data| {
-                                data.as_str()
-                                    .replace(">", "")
-                                    .trim()
-                                    .to_string()
-                                    .parse::<f32>()
+                        let body_text = data_result.unwrap().text().unwrap();
+                        let dom =
+                            tl::parse(body_text.as_str(), tl::ParserOptions::default()).unwrap();
+                        let parser = dom.parser();
+                        let element = dom
+                            .get_element_by_id("content3")
+                            .expect("")
+                            .get(parser)
+                            .unwrap();
+                        let table_text = element.inner_html(parser).to_string();
+                        let sub_dom =
+                            tl::parse(table_text.as_str(), tl::ParserOptions::default()).unwrap();
+                        let sub_parser = sub_dom.parser();
+                        let mut data_vector: Vec<f32> = Vec::new();
+                        let mut unit_vector: Vec<String> = Vec::new();
+                        let datas = sub_dom.query_selector("td.tabletext").unwrap();
+                        datas.for_each(|data| {
+                            data_vector.push(
+                                data.get(sub_parser)
                                     .unwrap()
-                            });
+                                    .inner_text(sub_parser)
+                                    .trim()
+                                    .replace("&nbsp;", "")
+                                    .parse::<f32>()
+                                    .unwrap(),
+                            );
+                            unit_vector.push(
+                                data.get(sub_parser)
+                                    .unwrap()
+                                    .children()
+                                    .unwrap()
+                                    .all(sub_parser)
+                                    .get(1)
+                                    .unwrap()
+                                    .outer_html(sub_parser)
+                                    .to_string()
+                                    .split(".")
+                                    .nth(1)
+                                    .unwrap()
+                                    .split("\"")
+                                    .nth(0)
+                                    .unwrap()
+                                    .to_string(),
+                            );
+                        });
                         let traffic = TrafficStats {
-                            total: matches.next().unwrap(),
-                            last: matches.next().unwrap(),
-                            current: matches.next().unwrap(),
-                            used: matches.next().unwrap(),
-                            remaining: matches.next().unwrap(),
+                            total: data_vector[6],
+                            last: data_vector[7],
+                            current: data_vector[8],
+                            used: data_vector[9],
+                            remaining: data_vector[10],
                         };
                         app_state.lock().unwrap().traffic = traffic.clone();
                         let data_usage = traffic.used / traffic.total;
@@ -386,26 +408,12 @@ fn get_remaining_data(app: tauri::AppHandle, initial_run: bool) {
                         } else {
                             NotificationState::Used100
                         };
-                        let mut matches_unit = regex_traffic_units
-                            .find_iter(body.split("</table>").into_iter().nth(0).unwrap())
-                            .into_iter()
-                            .map(|data| {
-                                data.as_str()
-                                    .replace(">", "")
-                                    .trim()
-                                    .to_string()
-                                    .split("Language.")
-                                    .into_iter()
-                                    .nth(1)
-                                    .unwrap()
-                                    .to_string()
-                            });
                         let traffic_units = TrafficUnits {
-                            total: matches_unit.next().unwrap().to_string(),
-                            last: matches_unit.next().unwrap().to_string(),
-                            current: matches_unit.next().unwrap().to_string(),
-                            used: matches_unit.next().unwrap().to_string(),
-                            remaining: matches_unit.next().unwrap().to_string(),
+                            total: unit_vector[6].to_string(),
+                            last: unit_vector[7].to_string(),
+                            current: unit_vector[8].to_string(),
+                            used: unit_vector[9].to_string(),
+                            remaining: unit_vector[10].to_string(),
                         };
                         app_state.lock().unwrap().traffic_units = traffic_units.clone();
                         if app_state.lock().unwrap().last_notification_state

@@ -22,6 +22,7 @@ timer = "0.2.0"
 chrono = "0.4.23"
 reqwest = { version = "0.11.13", features = ["blocking"] }
 regex = "1.7.1"
+tl = "0.7.7"
 
 [features]
 # by default Tauri runs in production mode
