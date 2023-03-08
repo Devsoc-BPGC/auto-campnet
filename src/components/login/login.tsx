@@ -11,8 +11,8 @@ import { emit } from "@tauri-apps/api/event";
 
 import styles from "./login.module.scss";
 
-import bits_logo from "../../assets/bitslogo.png";
 import { ChangeEvent } from "preact/compat";
+import { invoke } from "@tauri-apps/api";
 
 export function Login(props: {
     credentials: {
@@ -24,6 +24,7 @@ export function Login(props: {
         username: string;
         password: string;
     }>;
+    logo: string;
 }) {
     const [localUsername, setLocalUsername] = useState(
         props.credentials.username
@@ -39,7 +40,7 @@ export function Login(props: {
         <div>
             <div class={styles.loginContainer}>
                 <img
-                    src={bits_logo}
+                    src={props.logo}
                     class={styles.bitsLogo}
                     alt={"BITS Goa Logo"}
                 />
@@ -99,47 +100,54 @@ export function Login(props: {
                             autoCloseTime: 3000,
                             content: "Verifying credentials",
                         });
-                        fetch(
-                            "https://campnet.bits-goa.ac.in:8093/userportal/Controller",
-                            {
-                                method: "POST",
-                                body: Body.form({
-                                    mode: "451",
-                                    json: JSON.stringify({
-                                        username: localUsername,
-                                        password: localPassword,
-                                        languageid: 1,
-                                        browser: "Chrome_106",
-                                    }),
-                                }),
-                            }
-                        )
-                            .then((res: any) => {
-                                if (res.data.status === 200) {
-                                    showToast("Credentias verified!", {
-                                        type: "success",
-                                        autoCloseTime: 3000,
-                                        content: "Credentias verified!",
-                                    });
-                                    props.setCredentials({
-                                        username: localUsername,
-                                        password: localPassword,
-                                    });
-                                    emit("save", {
-                                        username:
-                                            encodeURIComponent(localUsername),
-                                        password:
-                                            encodeURIComponent(localPassword),
-                                    });
-                                } else {
-                                    showToast("Incorrect credentials!", {
-                                        type: "error",
-                                        autoCloseTime: 3000,
-                                        content: "Incorrect credentials!",
-                                    });
-                                }
+                        invoke("credential_check", {
+                            username: encodeURIComponent(localUsername),
+                            password: encodeURIComponent(localPassword),
+                        })
+                            .then(() => {
+                                showToast("Credentias verified!", {
+                                    type: "success",
+                                    autoCloseTime: 3000,
+                                    content: "Credentias verified!",
+                                });
+                                props.setCredentials({
+                                    username: localUsername,
+                                    password: localPassword,
+                                });
+                                emit("save", {
+                                    username: encodeURIComponent(localUsername),
+                                    password: encodeURIComponent(localPassword),
+                                });
                             })
-                            .catch((err) => console.error(err));
+                            .catch((err) => {
+                                switch (err) {
+                                    case "INVALIDCRED":
+                                        showToast("Incorrect credentials", {
+                                            type: "error",
+                                            autoCloseTime: 3000,
+                                            content: "Incorrect credentials!",
+                                        });
+                                        break;
+                                    case "NOSOPHOS":
+                                        showToast("Not on Sophos!", {
+                                            type: "error",
+                                            autoCloseTime: 3000,
+                                            content: "Not on Sophos!",
+                                        });
+                                        break;
+                                    case "UNKNOWN":
+                                        showToast(
+                                            "Could not verify credentials!",
+                                            {
+                                                type: "error",
+                                                autoCloseTime: 3000,
+                                                content:
+                                                    "Could not verify credentials!",
+                                            }
+                                        );
+                                        break;
+                                }
+                            });
                     }}
                 >
                     Save
