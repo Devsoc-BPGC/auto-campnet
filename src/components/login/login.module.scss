@@ -10,6 +10,17 @@
   margin: 0.5rem 0;
 }
 
+.autolaunchContainer {
+  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  font-family: 'Times New Roman', Times, serif;
+}
+
+.autolaunchSwitch {
+  margin: 0 0.5rem;
+}
+
 .bitsLogo {
   margin: 1rem 0;
   height: 6.5rem;

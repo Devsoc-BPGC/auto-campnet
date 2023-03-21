@@ -3,10 +3,9 @@ import {
     InputField,
     showToast,
     Tag,
-    Typography,
+    Toggle,
 } from "@cred/neopop-web/lib/components";
 import { StateUpdater, useEffect, useState } from "preact/hooks";
-import { fetch, Body } from "@tauri-apps/api/http";
 import { emit } from "@tauri-apps/api/event";
 
 import styles from "./login.module.scss";
@@ -19,12 +18,12 @@ export function Login(props: {
         username: string;
         password: string;
     };
-    capsLock: boolean;
     setCredentials: StateUpdater<{
         username: string;
         password: string;
     }>;
     logo: string;
+    autolaunch: boolean;
 }) {
     const [localUsername, setLocalUsername] = useState(
         props.credentials.username
@@ -32,10 +31,16 @@ export function Login(props: {
     const [localPassword, setLocalPassword] = useState(
         props.credentials.password
     );
+    const [capsLock, setCapsLock] = useState(false);
     useEffect(() => {
         setLocalUsername(props.credentials.username);
         setLocalPassword(props.credentials.password);
     }, [props.credentials]);
+    useEffect(() => {
+        window.addEventListener("keyup", (event) =>
+            setCapsLock(event.getModifierState("CapsLock"))
+        );
+    }, []);
     return (
         <div>
             <div class={styles.loginContainer}>
@@ -77,7 +82,7 @@ export function Login(props: {
                         margin: "0.5rem 0",
                     }}
                 />
-                {props.capsLock && (
+                {capsLock && (
                     <Tag
                         colorConfig={{
                             background: "#010B14",
@@ -87,6 +92,23 @@ export function Login(props: {
                         CapsLock is On!
                     </Tag>
                 )}
+                <div class={styles.autolaunchContainer}>
+                    <span class={styles.autolaunchSwitch}>
+                        <Toggle
+                            isChecked={props.autolaunch}
+                            colorMode={"light"}
+                            onChange={(
+                                event: ChangeEvent<HTMLInputElement>
+                            ) => {
+                                emit(
+                                    "autolaunch",
+                                    (event.target as HTMLInputElement).checked
+                                );
+                            }}
+                        />
+                    </span>
+                    <span>Start at boot</span>
+                </div>
                 <Button
                     variant="primary"
                     kind="elevated"
