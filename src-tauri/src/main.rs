@@ -637,7 +637,6 @@ fn main() {
                 } else {
                     exe_path
                 };
-                info!("auto_start path {}", &app_path);
                 auto_launch_builder.set_app_path(&app_path);
             }
             #[cfg(target_os = "linux")]
