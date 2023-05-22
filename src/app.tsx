@@ -31,10 +31,9 @@ export function App() {
         used: "",
         remaining: "",
     });
-
-    const [capsLock, setCapsLock] = useState(false);
     const [logo, setLogo] = useState(initLogo);
     const [BG, setBG] = useState(initBG);
+    const [autolaunch, setAutolaunch] = useState(false);
 
     useEffect(() => {
         listen("credentials", (creds: Event<Credentials>) => {
@@ -49,6 +48,9 @@ export function App() {
         listen("traffic_units", (traffic_units: Event<TrafficUnits>) => {
             setTrafficUnits(traffic_units.payload);
         });
+        listen("autolaunch", (enabled: Event<boolean>) => {
+            setAutolaunch(enabled.payload);
+        });
         document.documentElement.style.setProperty(
             "background-image",
             `url(${BG})`
@@ -56,9 +58,6 @@ export function App() {
         document.addEventListener("visibilitychange", () => {
             if (document.visibilityState === "hidden") emit("minimise");
         });
-        window.addEventListener("keyup", (event) =>
-            setCapsLock(event.getModifierState("CapsLock"))
-        );
     }, []);
 
     return (
@@ -74,9 +73,9 @@ export function App() {
                 <div class={styles.mainContainer}>
                     <Login
                         credentials={credentials}
-                        capsLock={capsLock}
                         setCredentials={setCredentials}
                         logo={logo}
+                        autolaunch={autolaunch}
                     />
                     <DataBalance
                         credentials={credentials}

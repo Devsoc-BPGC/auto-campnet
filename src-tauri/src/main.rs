@@ -4,8 +4,10 @@
     windows_subsystem = "windows"
 )]
 
+use auto_launch::{AutoLaunch, AutoLaunchBuilder, Error};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use std::env::current_exe;
 use std::io::Write;
 use std::sync::{Arc, Mutex};
 use tauri::{
@@ -59,6 +61,22 @@ struct AppState {
     traffic_units: TrafficUnits,
     traffic_guard: Option<timer::Guard>,
     last_notification_state: NotificationState,
+}
+
+pub struct AutoLaunchManager(AutoLaunch);
+
+impl AutoLaunchManager {
+    pub fn enable(&self) -> Result<(), Error> {
+        self.0.enable()
+    }
+
+    pub fn disable(&self) -> Result<(), Error> {
+        self.0.disable()
+    }
+
+    pub fn is_enabled(&self) -> Result<bool, Error> {
+        self.0.is_enabled()
+    }
 }
 
 fn save_creds(creds: Credentials, save_file: &std::path::Path) {
@@ -520,6 +538,16 @@ fn credential_check(
     }
 }
 
+fn auto_launch_check(app: tauri::AppHandle) {
+    let window: tauri::Window = app.get_window("main").unwrap();
+    window
+        .emit(
+            "autolaunch",
+            app.state::<AutoLaunchManager>().is_enabled().unwrap(),
+        )
+        .unwrap();
+}
+
 fn main() {
     let tray_menu = tauri::SystemTrayMenu::new()
         .add_item(tauri::CustomMenuItem::new("show", "Show window"))
@@ -590,6 +618,58 @@ fn main() {
                     .hide()
                     .unwrap();
             });
+            let mut auto_launch_builder = AutoLaunchBuilder::new();
+            auto_launch_builder.set_app_name(&app.package_info().name);
+            let currnet_exe = current_exe();
+            #[cfg(windows)]
+            auto_launch_builder.set_app_path(&currnet_exe.unwrap().display().to_string());
+            #[cfg(target_os = "macos")]
+            {
+                // on macOS, current_exe gives path to /Applications/Example.app/MacOS/Example
+                // but this results in seeing a Unix Executable in macOS login items
+                // It must be: /Applications/Example.app
+                // If it didn't find exactly a single occurance of .app, it will default to
+                // exe path to not break it.
+                let exe_path = currnet_exe.unwrap().canonicalize()?.display().to_string();
+                let parts: Vec<&str> = exe_path.split(".app/").collect();
+                let app_path = if parts.len() == 2 {
+                    format!("{}.app", parts.get(0).unwrap().to_string())
+                } else {
+                    exe_path
+                };
+                auto_launch_builder.set_app_path(&app_path);
+            }
+            #[cfg(target_os = "linux")]
+            if let Some(appimage) = app
+                .env()
+                .appimage
+                .and_then(|p| p.to_str().map(|s| s.to_string()))
+            {
+                auto_launch_builder.set_app_path(&appimage);
+            } else {
+                auto_launch_builder.set_app_path(&currnet_exe.unwrap().display().to_string());
+            }
+
+            app.manage(AutoLaunchManager(
+                auto_launch_builder.build().map_err(|e| e.to_string())?,
+            ));
+
+            let app_handle_launch = app.app_handle();
+            app.listen_global("autolaunch", move |event: tauri::Event| {
+                if event.payload().unwrap().parse::<bool>().unwrap() {
+                    app_handle_launch
+                        .state::<AutoLaunchManager>()
+                        .enable()
+                        .unwrap();
+                } else {
+                    app_handle_launch
+                        .state::<AutoLaunchManager>()
+                        .disable()
+                        .unwrap();
+                }
+                auto_launch_check(app_handle_launch.app_handle());
+            });
+
             std::fs::create_dir_all(app.path_resolver().app_config_dir().unwrap()).unwrap();
             let app_state: State<Arc<Mutex<AppState>>> = app.state::<Arc<Mutex<AppState>>>();
             if creds.is_ok() {
@@ -602,6 +682,7 @@ fn main() {
                 get_remaining_data(app.app_handle(), true);
             } else {
                 app.get_window("main").unwrap().show().unwrap();
+                auto_launch_check(app.app_handle());
             }
             Ok(())
         })
@@ -613,6 +694,7 @@ fn main() {
                 }
                 "show" => {
                     let app_state = app.state::<Arc<Mutex<AppState>>>();
+                    auto_launch_check(app.app_handle());
                     let window: tauri::Window = app.get_window("main").unwrap();
                     window
                         .emit("credentials", app_state.lock().unwrap().credentials.clone())
@@ -709,6 +791,7 @@ fn main() {
                         used: "".to_string(),
                         remaining: "".to_string(),
                     };
+                    auto_launch_check(app.app_handle());
                     let window: tauri::Window = app.get_window("main").unwrap();
                     window
                         .emit("credentials", app_state.lock().unwrap().credentials.clone())
@@ -733,6 +816,7 @@ fn main() {
                 ..
             } => {
                 let app_state = app.state::<Arc<Mutex<AppState>>>();
+                auto_launch_check(app.app_handle());
                 let window: tauri::Window = app.get_window("main").unwrap();
                 window
                     .emit("credentials", app_state.lock().unwrap().credentials.clone())
