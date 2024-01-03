@@ -1,6 +1,6 @@
 [package]
 name = "app"
-version = "2.0.0"
+version = "2.0.1"
 description = "Connect to BITS Goa campus network automatically"
 authors = ["Hrishikesh Patil <hrishikeshpatil.754@gmail.com>"]
 license = "MIT"

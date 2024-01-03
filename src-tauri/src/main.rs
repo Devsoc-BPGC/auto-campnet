@@ -567,7 +567,7 @@ fn main() {
                     password: "".to_string(),
                 },
                 login_guard: Option::None,
-                portal_endpoint: "https://campnet.bits-goa.ac.in:8093".to_string(),
+                portal_endpoint: "https://campnet.bits-goa.ac.in:4443".to_string(),
                 cookie: "".to_string(),
                 csrf: "".to_string(),
                 traffic: TrafficStats {
@@ -676,7 +676,7 @@ fn main() {
                 app_state.lock().unwrap().login_endpoint =
                     String::from("https://campnet.bits-goa.ac.in:8090");
                 app_state.lock().unwrap().portal_endpoint =
-                    String::from("https://campnet.bits-goa.ac.in:8093");
+                    String::from("https://campnet.bits-goa.ac.in:4443");
                 app_state.lock().unwrap().credentials = creds.unwrap();
                 connect_campnet(app.app_handle(), true);
                 get_remaining_data(app.app_handle(), true);
